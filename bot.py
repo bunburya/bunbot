@@ -100,7 +100,6 @@ class Bot:
             prefix = ''
         
         cmd = tokens.pop(0)
-        
         if cmd == '433':
             self.nick += '_'
             self._send('NICK {0}'.format(self.nick))
@@ -108,10 +107,10 @@ class Bot:
             self.on_connect()
         if cmd == 'PING':
             self.pong(' '.join(tokens))
-        elif cmd == 'PRIVMSG':
-            self.handle_privmsg(tokens, prefix)
         elif cmd == 'ERROR':
             self.handle_error(tokens)
+        elif cmd == 'PRIVMSG':
+            self.bot.handle_privmsg(tokens, prefix)
     
     def connect(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
