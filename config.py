@@ -22,19 +22,20 @@ class Identity:
     
     ident = 'bunbot'
     serv = 'cube.netsoc.tcd.ie'
+    host = 'irc.freenode.net'
     name = 'Botty Mc Botson'
     nick = 'bunbot'
     
-    joins = {
-            'irc.freenode.net': ['#python-forum'],
-            #'irc.netsoc.tcd.ie': ['#interbots', '#winning']]
-            }
+    joins = [
+            '#python-forum'
+            ]
 
 class CommandLib:
     
     def __init__(self, bot):
         self.bot = bot
         self.conn = bot.conn
+        self.addr_funcs = {}
         self.unaddr_funcs = {'!fortune': self.fortune, '!bf': self.bf,
                             '!stock': self.stock, '!maxim': self.maxim,
                             '!pep': self.pep, '!reddit': self.reddit,
@@ -61,17 +62,17 @@ class CommandLib:
     def _func_help(self, fnstr, chan):
         addr = fnstr
         unaddr = '!'+fnstr
-        if addr in self.bot.addr_funcs:
-            ans = addr, getattr(self.bot.addr_funcs[addr], '__doc__')
-        elif unaddr in self.bot.unaddr_funcs:
-            ans = unaddr, getattr(self.bot.unaddr_funcs[unaddr], '__doc__')
+        if addr in self.addr_funcs:
+            ans = addr, getattr(self.addr_funcs[addr], '__doc__')
+        elif unaddr in self.unaddr_funcs:
+            ans = unaddr, getattr(self.unaddr_funcs[unaddr], '__doc__')
         else:
             ans = addr, 'Not found'
         self.conn.say('{}: {}'.format(*ans), chan)
 
     def _gen_help(self, chan):
-        addr = ', '.join([i for i in self.bot.addr_funcs.keys() if i])
-        unaddr = ', '.join(self.bot.unaddr_funcs.keys())
+        addr = ', '.join([i for i in self.addr_funcs.keys() if i])
+        unaddr = ', '.join(self.unaddr_funcs.keys())
         if addr:
             self.conn.say('Commands that must be addressed to me: {0}'.format(addr), chan)
         if unaddr:
@@ -125,7 +126,7 @@ class CommandLib:
     def pep(self, args, data):
         """Return the titles of and links to the PEPs with the given numbers."""
         if not args:
-            self.conn.say('Give me a PEP number.', data['chan'])
+            self.conn.say('Give me a PEP number.', data['channel'])
         for t in args:
             info = pep(t)
             for d in info:

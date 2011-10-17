@@ -11,14 +11,14 @@ class IRCConn:
         self.bot = bot
         i = bot.ident
         self.ident = i.ident
-        self.host = i.host
         self.serv = i.serv
+        self.host = i.host
         self.name = i.name
         self.nick = i.nick
+        self.join_first = i.joins
+        self.port = 6667
     
     def connect(self):
-        if nick is None:
-            nick = self.bot.nick
         self.sock = socket(AF_INET, SOCK_STREAM)
         self.sock.connect((self.host, self.port))
         self._send('USER {} {} {} :{}'.format(self.ident, self.host, self.serv, self.name))
@@ -30,7 +30,7 @@ class IRCConn:
         Called once we have connected to and identified with the server.
         Mainly joins the channels that we want to join at the start.
         """
-        for chan in self.init_chans:
+        for chan in self.join_first:
             self.join(chan)
     
     def join(self, chan):
@@ -39,7 +39,7 @@ class IRCConn:
     def _send(self, msg):
         """Send something (anything) to the IRC server."""
         print('sending: {}\r\n'.format(msg))
-        self.sock.send('{}{}\r\n'.format(prefix, msg).encode())
+        self.sock.send('{}\r\n'.format(msg).encode())
     
     def say(self, msg, chan, to=None):
         """say(msg, chan): Say msg on chan."""
@@ -58,9 +58,9 @@ class IRCConn:
         buf = []
         while True:
             nxt_ch = None
-            ch = self.s.recv(1)
+            ch = self.sock.recv(1)
             if ch == b'\r':
-                nxt_ch = self.s.recv(1)
+                nxt_ch = self.sock.recv(1)
                 if nxt_ch == b'\n':
                     try:
                         line = b''.join(buf).decode()
