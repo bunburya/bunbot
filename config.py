@@ -172,3 +172,5 @@ class CommandLib:
         except RPNError as err:
             self.conn.say('Invalid RPN sequence. {}'.format(err.args[0]),
                             data['channel'])
+        except OverflowError:
+            self.conn.say('Result too large.', data['channel'])
