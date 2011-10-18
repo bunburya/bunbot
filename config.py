@@ -40,7 +40,8 @@ class CommandLib:
                             '!stock': self.stock, '!maxim': self.maxim,
                             '!pep': self.pep, '!reddit': self.reddit,
                             '!help': self.help, '!fuck': self.fuck,
-                            '!doc': self.doc, '!rpn': self.rpn}
+                            '!doc': self.doc, '!rpn': self.rpn, 
+                            '!stats': self.stats}
             
     maxims =    ['Equity will not suffer a wrong to be without a remedy.',
                  'Equity follows the law.',
@@ -58,6 +59,10 @@ class CommandLib:
     def maxim(self, args, data):
         """Return a random maxim of equity."""
         self.conn.say(choice(self.maxims), data['channel'])
+
+    def stats(self, args, data):
+        """Return the link to the #python-forum stats page."""
+        self.conn.say('http://bunburya.netsoc.ie/ircstats/python-forum.html', data['channel'])
 
     def _func_help(self, fnstr, chan):
         addr = fnstr
@@ -82,7 +87,7 @@ class CommandLib:
         """Return help on a specific function, or a list of available functions."""
         if args:
             for arg in args:
-                self._func_help(t, data['channel'])
+                self._func_help(arg, data['channel'])
         else:
             self._gen_help(data['channel'])
 
@@ -103,8 +108,8 @@ class CommandLib:
         if not ''.join(args).isalpha():
             self.conn.say('Give me a stock symbol.', data['channel'])
             return
-        data = get_quote(' '.join(args))
-        for co in data:
+        quotes = get_quote(' '.join(args))
+        for co in quotes:
             sym, price, change = co
             if price == '0.00' and change == 'N/A':
                 self.conn.say('{} not found'.format(sym), data['channel'])

@@ -114,7 +114,6 @@ class IRCConn:
 
     def handle_encoding_error(self):
         print('encoding error encountered.')
-        self.say('You\'re talking gibberish man.')
     
     def handle_error(self, tokens):
         print('error. tokens:', tokens)
