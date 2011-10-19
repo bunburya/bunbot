@@ -56,6 +56,10 @@ class CommandLib:
                  'Where the equities are equal, the first in time prevails.',
                  'Where the equities are equal, the law prevails.']
     
+    def reload(self, args, data):
+        self.bot.reload_cmds()
+        self.conn.say('Command library reloaded.', data['channel'])
+    
     def maxim(self, args, data):
         """Return a random maxim of equity."""
         self.conn.say(choice(self.maxims), data['channel'])

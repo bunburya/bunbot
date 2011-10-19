@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
-from connect import IRCConn
-from config import CommandLib, Identity
+from imp import reload
+
+import config, connect
 
 class Bot:
     
     def __init__(self):
-        self.ident = Identity()
-        self.conn = IRCConn(self)
-        self.cmds = CommandLib(self)
+        self.ident = config.Identity()
+        self.conn = connect.IRCConn(self)
+        self.cmds = config.CommandLib(self)
         self.conn.connect()
         self.conn.mainloop()
+    
+    def reload_cmds(self):
+        self.cmds = reload(config).CommandLib(self)
     
     def handle_privmsg(self, tokens, sender):
         chan = tokens.pop(0)
