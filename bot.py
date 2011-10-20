@@ -24,8 +24,10 @@ class Bot:
             is_to_me = True
         else:
             is_to_me = False
-        
-        data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me}
+
+        nick, host = sender.split('!')        
+        data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me,
+                'nick': nick, 'host': host}
         
         cmd = tokens[0]
         try:

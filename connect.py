@@ -44,7 +44,8 @@ class IRCConn:
     def say(self, msg, chan, to=None):
         """say(msg, chan): Say msg on chan."""
         prefix = '' if to is None else '{}: '.format(sender)
-        self._send('{} {} :{}{}'.format('PRIVMSG', chan, prefix, msg))
+        for line in msg.splitlines():
+            self._send('{} {} :{}{}'.format('PRIVMSG', chan, prefix, line))
 
     def pong(self, trail):
         self._send('{} {}'.format('PONG', trail))

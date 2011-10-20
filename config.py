@@ -5,7 +5,8 @@ from subprocess import Popen, PIPE
 from urllib.request import urlopen
 from random import random, choice
 from re import split
-from os.path import join, expanduser
+from os.path import join, expanduser, isdir
+from os import mkdir
 
 from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
@@ -33,9 +34,7 @@ class Identity:
             ]
 
 class CommandLib:
-    
-    store_dir = expanduser('~/.bunbot')
-    
+        
     def __init__(self, bot):
         self.bot = bot
         self.conn = bot.conn
@@ -54,6 +53,9 @@ class CommandLib:
         Here, we set up things that we will need for the functioning of
         the bot, such as initialising certain classes.
         """
+        self.store_dir = expanduser('~/.bunbot')
+        if not isdir(self.store_dir):
+            mkdir(self.store_dir)
         self.msg_handlers = {}
         for chan in self.bot.ident.joins:
             store_file = join(self.store_dir, chan)
@@ -74,25 +76,27 @@ class CommandLib:
                  'Where the equities are equal, the law prevails.']
         
     def msg(self, args, data):
+        """No arguments: Checks for messages sent to you. <nick> <message> as arguments: Send <message> to <nick>. This function uses your current nick, and does not perform any authentication. It is therefore not to be regarded as secure. Abuse of the system will result in a ban."""
         msg_handler = self.msg_handlers[data['channel']]
+        nick = data['nick']
         if args:    # send
             recip = args.pop(0)
-            if not args:
+            print(args)
+            if not ''.join(args):
                 self.conn.say('No message provided.', data['channel'])
                 return
-            sender = data['sender']
             msg = ' '.join(args)
-            self.msg_handler.send_msg(sender, recip, msg)
+            msg_handler.send_msg(nick, recip, msg)
             self.conn.say('Message sent.', data['channel'])
         else:       # check
-            msgs = self.msg_handler.check_msgs(nick)
+            msgs = msg_handler.check_msgs(nick)
             if msgs:
-                self.msg_handler.clear_msgs(nick)
+                msg_handler.clear_msgs(nick)
                 for msg, sender, time in msgs:
-                    ans = '{} (sent by {} at {} UTC)'.format(msg, sender, time)
-                    self.conn.say(ans, data['sender'])
+                    ans = '{} (sent by {} at {} (UTC))'.format(msg, sender, time)
+                    self.conn.say(ans, nick)
             else:
-                self.conn.say('No messages.', data['sender'])
+                self.conn.say('No messages.', nick)
     
     def reload(self, args, data):
         self.bot.reload_cmds()
