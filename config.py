@@ -54,10 +54,10 @@ class CommandLib:
         Here, we set up things that we will need for the functioning of
         the bot, such as initialising certain classes.
         """
-        msg_handlers = {}
+        self.msg_handlers = {}
         for chan in self.bot.ident.joins:
             store_file = join(self.store_dir, chan)
-            msg_handlers[chan] = MessageHandler(store_file)
+            self.msg_handlers[chan] = MessageHandler(store_file)
         
             
     maxims =    ['Equity will not suffer a wrong to be without a remedy.',
@@ -74,7 +74,7 @@ class CommandLib:
                  'Where the equities are equal, the law prevails.']
         
     def msg(self, args, data):
-        msg_handler = msg_handlers[data['channel']]
+        msg_handler = self.msg_handlers[data['channel']]
         if args:    # send
             recip = args.pop(0)
             if not args:
