@@ -16,6 +16,7 @@ from reddit import rand_item
 from pydoc import splitdoc
 from doc import doc_from_str
 from rpn import eval_rpn, InputError as RPNError
+from euler import summary
 
 class Identity:
     """
@@ -46,7 +47,7 @@ class CommandLib:
                             '!help': self.help, '!fuck': self.fuck,
                             '!doc': self.doc, '!rpn': self.rpn, 
                             '!stats': self.stats, '!reload': self.reload,
-                            '!msg': self.msg}
+                            '!msg': self.msg, '!euler': self.euler}
         self.other_join_funcs = [self.msg_notify]
         
     def setup(self):
@@ -57,10 +58,14 @@ class CommandLib:
         self.store_dir = expanduser('~/.bunbot')
         if not isdir(self.store_dir):
             mkdir(self.store_dir)
+
         self.msg_handlers = {}
         for chan in self.bot.ident.joins:
             store_file = join(self.store_dir, chan)
             self.msg_handlers[chan] = MessageHandler(store_file)
+        print(self.msg_handlers)
+        
+        self.euler_cache = {}
 
     ###
     # Below are functions that can be called by other users within the channel
@@ -81,7 +86,10 @@ class CommandLib:
         
     def msg(self, args, data):
         """No arguments: Checks for messages sent to you. <nick> <message> as arguments: Send <message> to <nick>. This function uses your current nick, and does not perform any authentication. It is therefore not to be regarded as secure. Abuse of the system will result in a ban."""
-        msg_handler = self.msg_handlers[data['channel']]
+        try:
+            msg_handler = self.msg_handlers[data['channel']]
+        except KeyError:
+            return      # until we handle this properly, just do nothing.
         nick = data['nick']
         if args:    # send
             recip = args.pop(0)
@@ -229,6 +237,17 @@ class CommandLib:
                             data['channel'])
         except OverflowError:
             self.conn.say('Result too large.', data['channel'])
+
+    def euler(self, args, data):
+        for arg in args:
+            if arg in self.euler_cache:
+                summ, url = self.euler_cache[arg]
+            else:
+                summ, url = summary(arg)
+                self.euler_cache[arg] = (summ, url)
+            ans = '{} ({})'.format(summ, url) if summ else 'Not found.'
+            self.conn.say('Problem {}: {}'.format(arg, ans), data['channel'])
+            
 
     ###
     # Below are functions called when a person joins the channel

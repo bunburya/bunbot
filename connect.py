@@ -106,7 +106,8 @@ class IRCConn:
         elif cmd == 'ERROR':
             self.handle_error(tokens)
         elif cmd == 'JOIN':
-            self.bot.handle_other_join(tokens, prefix)
+            if prefix != self.nick:
+                self.bot.handle_other_join(tokens, prefix)
         elif cmd == 'PRIVMSG':
             self.bot.handle_privmsg(tokens, prefix)
     
