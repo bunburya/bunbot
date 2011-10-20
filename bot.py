@@ -40,5 +40,13 @@ class Bot:
         elif cmd in self.cmds.unaddr_funcs:
             return self.cmds.unaddr_funcs[cmd](args, data)
 
+    def handle_other_join(self, tokens, joiner):
+        chan = tokens.pop()
+        nick, host = joiner.split('!')
+        data = {'channel': chan, 'joiner': joiner, 'nick': nick, 'host': host}
+        for func in self.cmds.other_join_funcs:
+            func(data)
+        
+
 if __name__ == '__main__':
     Bot()

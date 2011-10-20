@@ -47,6 +47,7 @@ class CommandLib:
                             '!doc': self.doc, '!rpn': self.rpn, 
                             '!stats': self.stats, '!reload': self.reload,
                             '!msg': self.msg}
+        self.other_join_funcs = [self.msg_notify]
         
     def setup(self):
         """
@@ -60,7 +61,10 @@ class CommandLib:
         for chan in self.bot.ident.joins:
             store_file = join(self.store_dir, chan)
             self.msg_handlers[chan] = MessageHandler(store_file)
-        
+
+    ###
+    # Below are functions that can be called by other users within the channel
+    ###
             
     maxims =    ['Equity will not suffer a wrong to be without a remedy.',
                  'Equity follows the law.',
@@ -225,3 +229,14 @@ class CommandLib:
                             data['channel'])
         except OverflowError:
             self.conn.say('Result too large.', data['channel'])
+
+    ###
+    # Below are functions called when a person joins the channel
+    ###
+
+    def msg_notify(self, data):
+        msg_handler = self.msg_handlers[data['channel']]
+        msgs = msg_handler.check_msgs(data['nick'])
+        if msgs:
+            self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),
+                            data['channel'], data['nick'])

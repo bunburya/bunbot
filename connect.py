@@ -43,7 +43,7 @@ class IRCConn:
     
     def say(self, msg, chan, to=None):
         """say(msg, chan): Say msg on chan."""
-        prefix = '' if to is None else '{}: '.format(sender)
+        prefix = '' if to is None else '{}: '.format(to)
         for line in msg.splitlines():
             self._send('{} {} :{}{}'.format('PRIVMSG', chan, prefix, line))
 
@@ -91,9 +91,9 @@ class IRCConn:
         line = line.strip('\r\n')
         tokens = line.split(' ')
         if tokens[0].startswith(':'):
-            sender = tokens.pop(0)[1:]
+            prefix = tokens.pop(0)[1:]
         else:
-            sender = ''
+            prefix = ''
         
         cmd = tokens.pop(0)
         if cmd == '433':    # nick already in use
@@ -105,8 +105,10 @@ class IRCConn:
             self.pong(' '.join(tokens))
         elif cmd == 'ERROR':
             self.handle_error(tokens)
+        elif cmd == 'JOIN':
+            self.bot.handle_other_join(tokens, prefix)
         elif cmd == 'PRIVMSG':
-            self.bot.handle_privmsg(tokens, sender)
+            self.bot.handle_privmsg(tokens, prefix)
     
     def mainloop(self):
         while True:
