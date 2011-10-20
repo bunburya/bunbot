@@ -5,7 +5,9 @@ from subprocess import Popen, PIPE
 from urllib.request import urlopen
 from random import random, choice
 from re import split
+from os.path import join, expanduser
 
+from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
 from bf import gen_bf
 from pep import main as pep
@@ -32,16 +34,31 @@ class Identity:
 
 class CommandLib:
     
+    store_dir = expanduser('~/.bunbot')
+    
     def __init__(self, bot):
         self.bot = bot
         self.conn = bot.conn
+        self.setup()
         self.addr_funcs = {}
         self.unaddr_funcs = {'!fortune': self.fortune, '!bf': self.bf,
                             '!stock': self.stock, '!maxim': self.maxim,
                             '!pep': self.pep, '!reddit': self.reddit,
                             '!help': self.help, '!fuck': self.fuck,
                             '!doc': self.doc, '!rpn': self.rpn, 
-                            '!stats': self.stats}
+                            '!stats': self.stats, '!reload': self.reload,
+                            '!msg': self.msg}
+        
+    def setup(self):
+        """
+        Here, we set up things that we will need for the functioning of
+        the bot, such as initialising certain classes.
+        """
+        msg_handlers = {}
+        for chan in self.bot.ident.joins:
+            store_file = join(self.store_dir, chan)
+            msg_handlers[chan] = MessageHandler(store_file)
+        
             
     maxims =    ['Equity will not suffer a wrong to be without a remedy.',
                  'Equity follows the law.',
@@ -55,6 +72,27 @@ class CommandLib:
                  'Equity acts in personam.',
                  'Where the equities are equal, the first in time prevails.',
                  'Where the equities are equal, the law prevails.']
+        
+    def msg(self, args, data):
+        msg_handler = msg_handlers[data['channel']]
+        if args:    # send
+            recip = args.pop(0)
+            if not args:
+                self.conn.say('No message provided.', data['channel'])
+                return
+            sender = data['sender']
+            msg = ' '.join(args)
+            self.msg_handler.send_msg(sender, recip, msg)
+            self.conn.say('Message sent.', data['channel'])
+        else:       # check
+            msgs = self.msg_handler.check_msgs(nick)
+            if msgs:
+                self.msg_handler.clear_msgs(nick)
+                for msg, sender, time in msgs:
+                    ans = '{} (sent by {} at {} UTC)'.format(msg, sender, time)
+                    self.conn.say(ans, data['sender'])
+            else:
+                self.conn.say('No messages.', data['sender'])
     
     def reload(self, args, data):
         self.bot.reload_cmds()
