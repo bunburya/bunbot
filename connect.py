@@ -91,7 +91,7 @@ class IRCConn:
         line = line.strip('\r\n')
         tokens = line.split(' ')
         if tokens[0].startswith(':'):
-            prefix = tokens.pop(0)[1:]
+            prefix = tokens.pop(0)[1:].strip(':')
         else:
             prefix = ''
         
@@ -106,7 +106,7 @@ class IRCConn:
         elif cmd == 'ERROR':
             self.handle_error(tokens)
         elif cmd == 'JOIN':
-            if prefix != self.nick:
+            if prefix.split('!')[0] != self.nick:
                 self.bot.handle_other_join(tokens, prefix)
         elif cmd == 'PRIVMSG':
             self.bot.handle_privmsg(tokens, prefix)

@@ -17,6 +17,7 @@ from pydoc import splitdoc
 from doc import doc_from_str
 from rpn import eval_rpn, InputError as RPNError
 from euler import summary
+from textgen import TextGenerator
 
 class Identity:
     """
@@ -47,7 +48,10 @@ class CommandLib:
                             '!help': self.help, '!fuck': self.fuck,
                             '!doc': self.doc, '!rpn': self.rpn, 
                             '!stats': self.stats, '!reload': self.reload,
-                            '!msg': self.msg, '!euler': self.euler}
+                            '!msg': self.msg, '!euler': self.euler,
+                            '!source': self.source, '!lol': self.lol,
+                            '!markov': self.markov}
+        self.all_privmsg_funcs = [self.feed_markov]
         self.other_join_funcs = [self.msg_notify]
         
     def setup(self):
@@ -58,14 +62,19 @@ class CommandLib:
         self.store_dir = expanduser('~/.bunbot')
         if not isdir(self.store_dir):
             mkdir(self.store_dir)
-
-        self.msg_handlers = {}
-        for chan in self.bot.ident.joins:
-            store_file = join(self.store_dir, chan)
-            self.msg_handlers[chan] = MessageHandler(store_file)
-        print(self.msg_handlers)
         
+        # Setup for messaging system
+        msg_file = join(self.store_dir, self.bot.ident.host)
+        self.msg_handler = MessageHandler(msg_file)
+        
+        # Setup for markov text function
+        markov_file = join(self.store_dir, 'markov')
+        self.textgen = TextGenerator(markov_file)
+        self.textgen.load()
+        
+        # Set up caches for various functions
         self.euler_cache = {}
+        
 
     ###
     # Below are functions that can be called by other users within the channel
@@ -83,13 +92,9 @@ class CommandLib:
                  'Equity acts in personam.',
                  'Where the equities are equal, the first in time prevails.',
                  'Where the equities are equal, the law prevails.']
-        
+
     def msg(self, args, data):
         """No arguments: Checks for messages sent to you. <nick> <message> as arguments: Send <message> to <nick>. This function uses your current nick, and does not perform any authentication. It is therefore not to be regarded as secure. Abuse of the system will result in a ban."""
-        try:
-            msg_handler = self.msg_handlers[data['channel']]
-        except KeyError:
-            return      # until we handle this properly, just do nothing.
         nick = data['nick']
         if args:    # send
             recip = args.pop(0)
@@ -98,12 +103,12 @@ class CommandLib:
                 self.conn.say('No message provided.', data['channel'])
                 return
             msg = ' '.join(args)
-            msg_handler.send_msg(nick, recip, msg)
+            self.msg_handler.send_msg(nick, recip, msg)
             self.conn.say('Message sent.', data['channel'])
         else:       # check
-            msgs = msg_handler.check_msgs(nick)
+            msgs = self.msg_handler.check_msgs(nick)
             if msgs:
-                msg_handler.clear_msgs(nick)
+                self.msg_handler.clear_msgs(nick)
                 for msg, sender, time in msgs:
                     ans = '{} (sent by {} at {} (UTC))'.format(msg, sender, time)
                     self.conn.say(ans, nick)
@@ -201,12 +206,12 @@ class CommandLib:
             sub = 'all'
         else:
             sub = args[0]
-        post = rand_item(sub)
+        post, link = rand_item(sub)
         if post is None:
             self.conn.say('{}: No such subreddit.'.format(sub),
                             data['channel'])
         else:
-            self.conn.say('{} ({})'.format(*post), data['channel'])
+            self.conn.say('{} ({})'.format(post, link), data['channel'])
         
     def doc(self, args, data):
         """Return documentation for the given Python objects."""
@@ -238,7 +243,13 @@ class CommandLib:
         except OverflowError:
             self.conn.say('Result too large.', data['channel'])
 
+    def source(self, args, data):
+        self.conn.say('https://github.com/bunburya/bunbot', data['channel'])
+
     def euler(self, args, data):
+        """Return a summary of, and link to, each of the specified Project Euler problems."""
+        if not args:
+            self.conn.say('Give me a problem number.', data['channel'])
         for arg in args:
             if arg in self.euler_cache:
                 summ, url = self.euler_cache[arg]
@@ -248,14 +259,30 @@ class CommandLib:
             ans = '{} ({})'.format(summ, url) if summ else 'Not found.'
             self.conn.say('Problem {}: {}'.format(arg, ans), data['channel'])
             
+    def lol(self, args, data):
+        """..."""
+        self.conn.say('wat', data['channel'])
+
+    def markov(self, args, data):
+        text = self.textgen.get_text(count=20)
+        if text:
+            self.conn.say(text, data['channel'])
+        else:
+            self.conn.say('No text recorded.', data['channel'])
+
+    ###
+    # Below are functions called every time a PRIVMSG is received.
+    ###
+    
+    def feed_markov(self, args, data):
+        self.textgen.learn(' '.join(args))        
 
     ###
     # Below are functions called when a person joins the channel
     ###
 
     def msg_notify(self, data):
-        msg_handler = self.msg_handlers[data['channel']]
-        msgs = msg_handler.check_msgs(data['nick'])
+        msgs = self.msg_handler.check_msgs(data['nick'])
         if msgs:
             self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),
                             data['channel'], data['nick'])

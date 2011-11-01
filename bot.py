@@ -26,6 +26,8 @@ class Bot:
             is_to_me = False
 
         nick, host = sender.split('!')        
+        if chan == self.ident.nick:
+            chan = nick
         data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me,
                 'nick': nick, 'host': host}
         
@@ -36,10 +38,13 @@ class Bot:
             args = []
         
         if is_to_me and (cmd in self.cmds.addr_funcs):
-            return self.cmds.addr_funcs[cmd](args, data)
+            self.cmds.addr_funcs[cmd](args, data)
         elif cmd in self.cmds.unaddr_funcs:
-            return self.cmds.unaddr_funcs[cmd](args, data)
-
+            self.cmds.unaddr_funcs[cmd](args, data)
+        else:
+            for func in self.cmds.all_privmsg_funcs:
+                func(tokens, data)
+        
     def handle_other_join(self, tokens, joiner):
         chan = tokens.pop()
         nick, host = joiner.split('!')
