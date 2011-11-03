@@ -7,6 +7,7 @@ from random import random, choice
 from re import split
 from os.path import join, expanduser, isdir
 from os import mkdir
+from hashlib import md5
 
 from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
@@ -32,7 +33,11 @@ class Identity:
     nick = 'bunbot'
     
     joins = [
-            '#python-forum'
+            '#python-forum',
+            '#reddit',
+            '#xkcd',
+            '#cooking',
+            '#python-offtopic'
             ]
 
 class CommandLib:
@@ -50,9 +55,11 @@ class CommandLib:
                             '!stats': self.stats, '!reload': self.reload,
                             '!msg': self.msg, '!euler': self.euler,
                             '!source': self.source, '!lol': self.lol,
-                            '!markov': self.markov}
+                            '!markov': self.markov, '!save': self.save_markov,
+                            '!admin': self.admin}
         self.all_privmsg_funcs = [self.feed_markov]
         self.other_join_funcs = [self.msg_notify]
+        self.admin_funcs = {'join': self.join}
         
     def setup(self):
         """
@@ -74,7 +81,9 @@ class CommandLib:
         
         # Set up caches for various functions
         self.euler_cache = {}
-        
+
+        # Admin stuff
+        self.admin_pass_file = join(self.store_dir, 'admin_pass')
 
     ###
     # Below are functions that can be called by other users within the channel
@@ -270,6 +279,22 @@ class CommandLib:
         else:
             self.conn.say('No text recorded.', data['channel'])
 
+    def save_markov(self, args, data):
+        self.textgen.save()
+
+    def admin(self, args, data):
+        """Nothing to see here."""
+        if len(args) < 2:
+            return
+        with open(self.admin_pass_file, 'rb') as f:
+            pass_hash = f.read()
+        given_hash = md5(args.pop(0).encode()).digest()
+        if not (given_hash == pass_hash):
+            return
+        cmd = args.pop(0)
+        if cmd in self.admin_funcs:
+            self.admin_funcs[cmd](args, data)
+
     ###
     # Below are functions called every time a PRIVMSG is received.
     ###
@@ -286,3 +311,11 @@ class CommandLib:
         if msgs:
             self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),
                             data['channel'], data['nick'])
+
+    ###
+    # Below are admin-related functions.
+    ###
+    
+    def join(self, args, data):
+        for chan in args:
+            self.conn.join(chan)
