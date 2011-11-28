@@ -3,6 +3,7 @@ path.append('/home/bunburya/bin')
 
 from subprocess import Popen, PIPE
 from urllib.request import urlopen
+from urllib.parse import quote as urlquote
 from random import random, choice
 from re import split
 from os.path import join, expanduser, isdir
@@ -34,10 +35,6 @@ class Identity:
     
     joins = [
             '#python-forum',
-            '#reddit',
-            '#xkcd',
-            '#cooking',
-            '#python-offtopic'
             ]
 
 class CommandLib:
@@ -55,11 +52,11 @@ class CommandLib:
                             '!stats': self.stats, '!reload': self.reload,
                             '!msg': self.msg, '!euler': self.euler,
                             '!source': self.source, '!lol': self.lol,
-                            '!markov': self.markov, '!save': self.save_markov,
-                            '!admin': self.admin}
-        self.all_privmsg_funcs = [self.feed_markov]
+                            '!admin': self.admin, '!google': self.google}
         self.other_join_funcs = [self.msg_notify]
-        self.admin_funcs = {'join': self.join}
+        self.other_nick_funcs = [self.msg_notify]
+        self.all_privmsg_funcs = []
+        self.admin_funcs = {'join': self.join, 'part': self.part}
         
     def setup(self):
         """
@@ -73,11 +70,6 @@ class CommandLib:
         # Setup for messaging system
         msg_file = join(self.store_dir, self.bot.ident.host)
         self.msg_handler = MessageHandler(msg_file)
-        
-        # Setup for markov text function
-        markov_file = join(self.store_dir, 'markov')
-        self.textgen = TextGenerator(markov_file)
-        self.textgen.load()
         
         # Set up caches for various functions
         self.euler_cache = {}
@@ -177,7 +169,7 @@ class CommandLib:
     
     def stock(self, args, data):
         """Return stock prices and 24hr change for given stock symbols."""
-        if not ''.join(args).isalpha():
+        if not ''.join(args):
             self.conn.say('Give me a stock symbol.', data['channel'])
             return
         quotes = get_quote(' '.join(args))
@@ -227,16 +219,18 @@ class CommandLib:
         if not args:
             self.conn.say('Give me a Python object.', data['channel'])
         for t in args:
+            ans = []
             docstr = doc_from_str(t)
             if docstr is None:
-                ans = 'Not found.'
+                ans.append('Not found.')
             else:
-                splitted = splitdoc(docstr)[1].replace('\n', ' ').strip()
-                if not splitted:
-                    ans = 'Has no docstring.'
-                else:
-                    ans = splitted
-            self.conn.say('{}: {}'.format(t, ans), data['channel'])
+                usage, docstring = (i.replace('\n', ' ').strip() for i in splitdoc(docstr))
+                if usage:
+                    ans.append(usage)
+                if docstring:
+                    ans.append(docstring)
+            for a in ans:
+                self.conn.say('{}: {}'.format(t, a), data['channel'])
             
 
     def rpn(self, args, data):
@@ -272,16 +266,6 @@ class CommandLib:
         """..."""
         self.conn.say('wat', data['channel'])
 
-    def markov(self, args, data):
-        text = self.textgen.get_text(count=20)
-        if text:
-            self.conn.say(text, data['channel'])
-        else:
-            self.conn.say('No text recorded.', data['channel'])
-
-    def save_markov(self, args, data):
-        self.textgen.save()
-
     def admin(self, args, data):
         """Nothing to see here."""
         if len(args) < 2:
@@ -295,22 +279,30 @@ class CommandLib:
         if cmd in self.admin_funcs:
             self.admin_funcs[cmd](args, data)
 
+    def google(self, args, data):
+        """Return a LMGTFY result for the given query."""
+        if not args:
+            self.conn.say('Give me a query.', data['channel'])
+            return
+        query = urlquote(' '.join(args))
+        url = 'http://lmgtfy.com/?q={}'.format(query)
+        self.conn.say(url, data['channel'])
+
+
     ###
     # Below are functions called every time a PRIVMSG is received.
     ###
     
-    def feed_markov(self, args, data):
-        self.textgen.learn(' '.join(args))        
-
     ###
     # Below are functions called when a person joins the channel
     ###
 
     def msg_notify(self, data):
-        msgs = self.msg_handler.check_msgs(data['nick'])
+        nick = data['nick']
+        msgs = self.msg_handler.check_msgs(nick)
         if msgs:
             self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),
-                            data['channel'], data['nick'])
+                            nick)
 
     ###
     # Below are admin-related functions.
@@ -319,3 +311,7 @@ class CommandLib:
     def join(self, args, data):
         for chan in args:
             self.conn.join(chan)
+
+    def part(self, args, data):
+        for chan in args:
+            self.conn.part(chan)

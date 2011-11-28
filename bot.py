@@ -6,8 +6,15 @@ import config, connect
 
 class Bot:
     
-    def __init__(self):
+    def __init__(self, host=None, chan=None, nick=None):
         self.ident = config.Identity()
+        if host:
+            self.ident.host = host
+        if chan:
+            self.ident.joins = [chan]
+        if nick:
+            self.ident.nick = nick
+            self.ident.ident = nick
         self.conn = connect.IRCConn(self)
         self.cmds = config.CommandLib(self)
         self.conn.connect()
@@ -44,7 +51,14 @@ class Bot:
         else:
             for func in self.cmds.all_privmsg_funcs:
                 func(tokens, data)
-        
+
+    def handle_other_nick(self, tokens, changer):
+        new_nick = tokens.pop().strip(':')
+        old_nick, host = changer.split('!')
+        data = {'old': changer, 'nick': new_nick, 'host': host}
+        for func in self.cmds.other_nick_funcs:
+            func(data)
+
     def handle_other_join(self, tokens, joiner):
         chan = tokens.pop()
         nick, host = joiner.split('!')
@@ -54,4 +68,5 @@ class Bot:
         
 
 if __name__ == '__main__':
-    Bot()
+    from sys import argv
+    Bot(*argv[1:])

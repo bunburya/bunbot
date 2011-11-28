@@ -35,6 +35,12 @@ class IRCConn:
     
     def join(self, chan):
         self._send('JOIN {}'.format(chan))
+
+    def part(self, chan):
+        self._send('PART {}'.format(chan))
+    
+    def topic(self, chan, new=None):
+        self._send('TOPIC {} {}'.format(chan, new or ''))
     
     def _send(self, msg):
         """Send something (anything) to the IRC server."""
@@ -110,7 +116,9 @@ class IRCConn:
                 self.bot.handle_other_join(tokens, prefix)
         elif cmd == 'PRIVMSG':
             self.bot.handle_privmsg(tokens, prefix)
-    
+        elif cmd == 'NICK':
+            self.bot.handle_other_nick(tokens, prefix)
+
     def mainloop(self):
         while True:
             line = self.receive()
