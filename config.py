@@ -9,6 +9,7 @@ from re import split
 from os.path import join, expanduser, isdir
 from os import mkdir
 from hashlib import md5
+from sys import version
 
 from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
@@ -20,6 +21,7 @@ from doc import doc_from_str
 from rpn import eval_rpn, InputError as RPNError
 from euler import summary
 from textgen import TextGenerator
+from basearch import search
 
 class Identity:
     """
@@ -44,7 +46,7 @@ class CommandLib:
         self.conn = bot.conn
         self.setup()
         self.addr_funcs = {}
-        self.unaddr_funcs = {'!fortune': self.fortune, '!bf': self.bf,
+        self.unaddr_funcs = {'!fortune': self.fortune, '!k': self.k,
                             '!stock': self.stock, '!maxim': self.maxim,
                             '!pep': self.pep, '!reddit': self.reddit,
                             '!help': self.help, '!fuck': self.fuck,
@@ -52,11 +54,13 @@ class CommandLib:
                             '!stats': self.stats, '!reload': self.reload,
                             '!msg': self.msg, '!euler': self.euler,
                             '!source': self.source, '!lol': self.lol,
-                            '!admin': self.admin, '!google': self.google}
+                            '!admin': self.admin, '!google': self.google,
+                            '!snowman': self.snowman, '!beer': self.beer}        
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
         self.all_privmsg_funcs = []
-        self.admin_funcs = {'join': self.join, 'part': self.part}
+        self.admin_funcs = {'join': self.join, 'part': self.part, 'say': self.say,
+                'nick': self.nick}
         
     def setup(self):
         """
@@ -117,6 +121,7 @@ class CommandLib:
                 self.conn.say('No messages.', nick)
     
     def reload(self, args, data):
+        """Reload the command library."""
         self.bot.reload_cmds()
         self.conn.say('Command library reloaded.', data['channel'])
     
@@ -173,7 +178,7 @@ class CommandLib:
             self.conn.say('Give me a stock symbol.', data['channel'])
             return
         quotes = get_quote(' '.join(args))
-        for co in quotes:
+        for co in quotes[:13]:
             sym, price, change = co
             if price == '0.00' and change == 'N/A':
                 self.conn.say('{} not found'.format(sym), data['channel'])
@@ -196,7 +201,7 @@ class CommandLib:
         """Return the titles of and links to the PEPs with the given numbers."""
         if not args:
             self.conn.say('Give me a PEP number.', data['channel'])
-        for t in args:
+        for t in args[:13]:
             info = pep(t)
             for d in info:
                 self.conn.say(d, data['channel'])
@@ -218,11 +223,12 @@ class CommandLib:
         """Return documentation for the given Python objects."""
         if not args:
             self.conn.say('Give me a Python object.', data['channel'])
-        for t in args:
+        for t in args[:13]:
             ans = []
             docstr = doc_from_str(t)
             if docstr is None:
-                ans.append('Not found.')
+                v = version.split()[0]
+                ans.append('Not found on Python {}.'.format(v))
             else:
                 usage, docstring = (i.replace('\n', ' ').strip() for i in splitdoc(docstr))
                 if usage:
@@ -245,15 +251,18 @@ class CommandLib:
                             data['channel'])
         except OverflowError:
             self.conn.say('Result too large.', data['channel'])
+        except ZeroDivisionError:
+            self.conn.say('Division by zero.', data['channel'])
 
     def source(self, args, data):
+        """Returns the link to my source code, at bunburya's GitHub."""
         self.conn.say('https://github.com/bunburya/bunbot', data['channel'])
 
     def euler(self, args, data):
         """Return a summary of, and link to, each of the specified Project Euler problems."""
         if not args:
             self.conn.say('Give me a problem number.', data['channel'])
-        for arg in args:
+        for arg in args[:13]:
             if arg in self.euler_cache:
                 summ, url = self.euler_cache[arg]
             else:
@@ -280,13 +289,42 @@ class CommandLib:
             self.admin_funcs[cmd](args, data)
 
     def google(self, args, data):
-        """Return a LMGTFY result for the given query."""
+        """Return a Google search URL for the given query."""
         if not args:
             self.conn.say('Give me a query.', data['channel'])
             return
         query = urlquote(' '.join(args))
-        url = 'http://lmgtfy.com/?q={}'.format(query)
+        url = 'http://www.google.com/search?q={}'.format(query)
         self.conn.say(url, data['channel'])
+
+    def snowman(self, args, data):
+        """A festive addition. Prints the unicode snowman character."""
+        self.conn.say('\u2603', data['channel'])
+
+    def k(self, args, data):
+        """k"""
+        self.conn.say('k', data['channel'])
+
+    beer_result = '{} by {} ({})'
+    more_beer = '{} more results at {}.'
+    def beer(self, args, data):
+        """Search for beer reviews at BeerAdvocate.com."""
+        if not args:
+            self.conn.say('Give me a beer name.', data['channel'])
+            return
+        limit = 3
+        results, total, url = search(' '.join(args), limit)
+        if not total:
+            self.conn.say('No beers found.', data['channel'])
+            return
+        for r in results:
+            self.conn.say(
+                    self.beer_result.format(r.beer, r.brewer, r.beer_link),
+                    data['channel']
+                    )
+        more = total - limit
+        if more > 0:
+            self.conn.say(self.more_beer.format(more, url), data['channel'])
 
 
     ###
@@ -315,3 +353,12 @@ class CommandLib:
     def part(self, args, data):
         for chan in args:
             self.conn.part(chan)
+
+    def say(self, args, data):
+        if args:
+            chan = args[0]
+            self.conn.say(' '.join(args[1:]), chan)
+
+    def nick(self, args, data):
+        if args:
+            self.conn.nick(args[0])

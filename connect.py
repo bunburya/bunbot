@@ -8,21 +8,21 @@ class IRCConn:
     """
     
     def __init__(self, bot):
-        self.bot = bot
+        self._bot = bot
         i = bot.ident
-        self.ident = i.ident
-        self.serv = i.serv
-        self.host = i.host
-        self.name = i.name
-        self.nick = i.nick
-        self.join_first = i.joins
-        self.port = 6667
+        self._ident = i.ident
+        self._serv = i.serv
+        self._host = i.host
+        self._name = i.name
+        self._nick = i.nick
+        self._join_first = i.joins
+        self._port = 6667
     
     def connect(self):
-        self.sock = socket(AF_INET, SOCK_STREAM)
-        self.sock.connect((self.host, self.port))
-        self._send('USER {} {} {} :{}'.format(self.ident, self.host, self.serv, self.name))
-        self._send('NICK {}'.format(self.nick))
+        self._sock = socket(AF_INET, SOCK_STREAM)
+        self._sock.connect((self._host, self._port))
+        self._send('USER {} {} {} :{}'.format(self._ident, self._host, self._serv, self._name))
+        self.nick(self._nick)
         # wait until we have received the MOTD in full before proceeding
 
     def on_connect(self):
@@ -30,7 +30,7 @@ class IRCConn:
         Called once we have connected to and identified with the server.
         Mainly joins the channels that we want to join at the start.
         """
-        for chan in self.join_first:
+        for chan in self._join_first:
             self.join(chan)
     
     def join(self, chan):
@@ -45,7 +45,7 @@ class IRCConn:
     def _send(self, msg):
         """Send something (anything) to the IRC server."""
         print('sending: {}\r\n'.format(msg))
-        self.sock.send('{}\r\n'.format(msg).encode())
+        self._sock.send('{}\r\n'.format(msg).encode())
     
     def say(self, msg, chan, to=None):
         """say(msg, chan): Say msg on chan."""
@@ -55,7 +55,11 @@ class IRCConn:
 
     def pong(self, trail):
         self._send('{} {}'.format('PONG', trail))
-    
+
+    def nick(self, new):
+        self._send('NICK {}'.format(new))
+        self._nick = new
+
     def receive(self):
         """
         Read from the socket until we reach the end of an IRC message.
@@ -65,9 +69,9 @@ class IRCConn:
         buf = []
         while True:
             nxt_ch = None
-            ch = self.sock.recv(1)
+            ch = self._sock.recv(1)
             if ch == b'\r':
-                nxt_ch = self.sock.recv(1)
+                nxt_ch = self._sock.recv(1)
                 if nxt_ch == b'\n':
                     try:
                         line = b''.join(buf).decode()
@@ -103,8 +107,8 @@ class IRCConn:
         
         cmd = tokens.pop(0)
         if cmd == '433':    # nick already in use
-            self.nick += '_'
-            self._send('NICK {}'.format(self.nick))
+            self._nick += '_'
+            self.nick(self._nick)
         if cmd == '376':    # end of MOTD
             self.on_connect()
         if cmd == 'PING':
@@ -113,11 +117,11 @@ class IRCConn:
             self.handle_error(tokens)
         elif cmd == 'JOIN':
             if prefix.split('!')[0] != self.nick:
-                self.bot.handle_other_join(tokens, prefix)
+                self._bot.handle_other_join(tokens, prefix)
         elif cmd == 'PRIVMSG':
-            self.bot.handle_privmsg(tokens, prefix)
+            self._bot.handle_privmsg(tokens, prefix)
         elif cmd == 'NICK':
-            self.bot.handle_other_nick(tokens, prefix)
+            self._bot.handle_other_nick(tokens, prefix)
 
     def mainloop(self):
         while True:

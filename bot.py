@@ -37,8 +37,11 @@ class Bot:
             chan = nick
         data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me,
                 'nick': nick, 'host': host}
-        
-        cmd = tokens[0]
+
+        try:
+            cmd = tokens[0]
+        except IndexError:
+            cmd = None
         try:
             args = tokens[1:]
         except IndexError:
