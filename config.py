@@ -11,6 +11,7 @@ from os import mkdir
 from hashlib import md5
 from sys import version
 
+from alias_handler import get_true_nick, get_aliases
 from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
 from bf import gen_bf
@@ -22,6 +23,8 @@ from rpn import eval_rpn, InputError as RPNError
 from euler import summary
 from textgen import TextGenerator
 from basearch import search
+from twitter import get_tweets_from, get_tweet_text
+from rps import RockPaperScissors
 
 class Identity:
     """
@@ -55,7 +58,9 @@ class CommandLib:
                             '!msg': self.msg, '!euler': self.euler,
                             '!source': self.source, '!lol': self.lol,
                             '!admin': self.admin, '!google': self.google,
-                            '!snowman': self.snowman, '!beer': self.beer}        
+                            '!snowman': self.snowman, '!beer': self.beer,
+                            '!twitter': self.twitter, '!rps': self.rps,
+                            '!rps-optout': self.rps_optout}
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
         self.all_privmsg_funcs = []
@@ -75,6 +80,10 @@ class CommandLib:
         msg_file = join(self.store_dir, self.bot.ident.host)
         self.msg_handler = MessageHandler(msg_file)
         
+        # Rock Paper Scissors system
+        rps_dir = join(self.store_dir, 'rps')
+        self.rps_handler = RockPaperScissors(rps_dir)
+
         # Set up caches for various functions
         self.euler_cache = {}
 
@@ -100,10 +109,9 @@ class CommandLib:
 
     def msg(self, args, data):
         """No arguments: Checks for messages sent to you. <nick> <message> as arguments: Send <message> to <nick>. This function uses your current nick, and does not perform any authentication. It is therefore not to be regarded as secure. Abuse of the system will result in a ban."""
-        nick = data['nick']
+        nick = get_true_nick(data['nick'])
         if args:    # send
-            recip = args.pop(0)
-            print(args)
+            recip = get_true_nick(args.pop(0))
             if not ''.join(args):
                 self.conn.say('No message provided.', data['channel'])
                 return
@@ -326,6 +334,105 @@ class CommandLib:
         if more > 0:
             self.conn.say(self.more_beer.format(more, url), data['channel'])
 
+    def twitter(self, args, data):
+        """Return the last tweet of up to three given twitter users."""
+        if not args:
+            self.conn.say('Give me a twitter user.', data['channel'])
+        names = args[:3]
+        to_say = []
+        for n in names:
+            tweet = get_tweets_from(n, 1)
+            text = get_tweet_text(tweet)
+            if text:
+                text = text[0].replace('\n', ' ')
+            else:
+                text = 'No tweets found.'
+            to_say.append('{}: {}'.format(n, text))
+        for line in to_say:
+            self.conn.say(line, data['channel'])
+
+    def _play_rps(self, challor, challee, challor_move):
+        result = self.rps_handler.challenge(challor, challee, challor_move)
+        if result is None:
+            # Challenge only; no game took place
+            return None
+        if result is False:
+            # Draw
+            winner = False
+            challee_move = challor_move
+        else:
+            winner = result
+            if challor == winner:
+                challee_move = self.rps_handler.get_losing_move(challor_move)
+            else:
+                challee_move = self.rps_handler.get_winning_move(challor_move)
+        return winner, challee_move
+
+    def rps(self, args, data):
+        """With no args, list your current games. With opponent name as arg, list the status of your current game, if any, with that opponent. With opponent name and move as args, challenge opponent to a game or accept their challenge, playing the specified move."""
+        nick = get_true_nick(data['nick'])
+        optouts = self.rps_handler.get_optouts()
+        if nick in optouts:
+            self.conn.say('You have opted out of the Rock Paper Scissors system.', nick)
+            self.conn.say('Send !rps-optout again to opt back in.', nick)
+            return
+        games = self.rps_handler.get_player_games(nick)
+        if not args:
+            if not games:
+                self.conn.say('You have no current games.', nick)
+            else:
+                self.conn.say('player: your move', nick)
+                for g in games:
+                    self.conn.say('{}: {}'.format(g, games[g]), nick)
+            return
+        challee = get_true_nick(args.pop(0))
+        if challee == nick:
+            self.conn.say('Rock Paper Scissors is best played with two people.', nick)
+            return
+        if challee in optouts:
+            self.conn.say('{} has opted out of the Rock Paper Scissors system.'.format(challee), nick)
+            return
+        if not args:
+            if challee in optouts:
+                self.conn.say('{} has opted out of the Rock Paper Scissors system.'.format(challee), nick)
+            elif challee in games:
+                self.conn.say('You are currently in a game with {}. You have played a {}.'.format(challee, games[challee]), nick)
+            else:
+                self.conn.say('You are not currently in a game with {}.'.format(challee), nick)
+        elif len(args) > 1:
+            self.conn.say('I need 0, 1 or 2 args.')
+        else:
+            if data['channel'].startswith('#'):
+                self.conn.say('You should probably try that in a private message to me.', data['channel'])
+                return
+            move = self.rps_handler.get_move(args.pop())
+            if move is None:
+                self.conn.say('Valid commands are "rock", "paper", "scissors".', nick)
+                return
+            result = self._play_rps(nick, challee, move)
+            if result is None:
+                self.conn.say('You have challenged {} to a game of Rock Paper Scissors.'.format(challee), nick)
+                self.conn.say('{} has challenged you to a game of Rock Paper Scissors.'.format(nick), challee)
+                return
+            winner, challee_move = result
+            self.conn.say('You play a {}; {} plays a {}.'.format(move, challee, challee_move), nick)
+            self.conn.say('You play a {}; {} plays a {}.'.format(challee_move, nick, move), challee)
+            if winner is False:
+                for p in (nick, challee):
+                    self.conn.say('You draw!', p)
+            else:
+                loser = {nick, challee}.difference({winner}).pop()
+                outcomes = {winner: 'win', loser: 'lose'}
+                for p in outcomes:
+                    self.conn.say('You {}!'.format(outcomes[p]), p)
+
+    def rps_optout(self, args, data):
+        """Opt in to or out of bunbot's Rock Paper Scissors system."""
+        out = self.rps_handler.toggle_optout(data['nick'])
+        inout = 'out of' if out else 'in to'
+        self.conn.say('You have opted {} the Rock Paper Scissors system.'.format(inout), data['nick'])
+
+
 
     ###
     # Below are functions called every time a PRIVMSG is received.
@@ -336,7 +443,7 @@ class CommandLib:
     ###
 
     def msg_notify(self, data):
-        nick = data['nick']
+        nick = get_true_nick(data['nick'])
         msgs = self.msg_handler.check_msgs(nick)
         if msgs:
             self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),

@@ -31,7 +31,8 @@ class Bot:
             is_to_me = True
         else:
             is_to_me = False
-
+        # NB, sender is not the sender's nick but a string in the form
+        # <nick>!<host>
         nick, host = sender.split('!')        
         if chan == self.ident.nick:
             chan = nick
