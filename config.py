@@ -60,7 +60,8 @@ class CommandLib:
                             '!admin': self.admin, '!google': self.google,
                             '!snowman': self.snowman, '!beer': self.beer,
                             '!twitter': self.twitter, '!rps': self.rps,
-                            '!rps-optout': self.rps_optout}
+                            '!rps-optout': self.rps_optout,
+                            '!rps-league': self.rps_league}
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
         self.all_privmsg_funcs = []
@@ -81,7 +82,7 @@ class CommandLib:
         self.msg_handler = MessageHandler(msg_file)
         
         # Rock Paper Scissors system
-        rps_dir = join(self.store_dir, 'rps')
+        rps_dir = join(self.store_dir, 'rps', self.bot.ident.host)
         self.rps_handler = RockPaperScissors(rps_dir)
 
         # Set up caches for various functions
@@ -351,22 +352,47 @@ class CommandLib:
         for line in to_say:
             self.conn.say(line, data['channel'])
 
-    def _play_rps(self, challor, challee, challor_move):
-        result = self.rps_handler.challenge(challor, challee, challor_move)
+    def _rps_show_games(self, nick):
+        games = self.rps_handler.get_player_games(nick)
+        if games:
+            self.conn.say('player: your move', nick)
+            for g in games:
+                self.conn.say('{}: {}'.format(g, games[g]), nick)
+        else:
+            self.conn.say('You have no current games.', nick)
+
+    def _rps_show_game_with(self, nick, other):
+        games = self.rps_handler.get_player_games(nick)
+        if other in games:
+            move = games[other]
+            if move is None:
+                self.conn.say('{} has challenged you to a game.'.format(other), nick)
+            else:
+                self.conn.say('You have challenged {} to a game. Your move is {}.'.format(other, move), nick)
+
+    def _rps_get_own_move(self, other, other_move):
+        return self.rps_handler.get_winning_move(other_move)
+
+    def _rps_play(self, nick, other, move):
+        if other == self.bot.ident.nick:
+            own_move = self._rps_get_own_move(nick, move)
+            winner = self.rps_handler.game({other: own_move, nick: move})
+            return winner, own_move
+        result = self.rps_handler.challenge(nick, other, move)
         if result is None:
             # Challenge only; no game took place
             return None
         if result is False:
             # Draw
             winner = False
-            challee_move = challor_move
+            other_move = move
         else:
             winner = result
-            if challor == winner:
-                challee_move = self.rps_handler.get_losing_move(challor_move)
+            if nick == winner:
+                other_move = self.rps_handler.get_losing_move(move)
             else:
-                challee_move = self.rps_handler.get_winning_move(challor_move)
-        return winner, challee_move
+                other_move = self.rps_handler.get_winning_move(move)
+        return winner, other_move
 
     def rps(self, args, data):
         """With no args, list your current games. With opponent name as arg, list the status of your current game, if any, with that opponent. With opponent name and move as args, challenge opponent to a game or accept their challenge, playing the specified move."""
@@ -376,55 +402,48 @@ class CommandLib:
             self.conn.say('You have opted out of the Rock Paper Scissors system.', nick)
             self.conn.say('Send !rps-optout again to opt back in.', nick)
             return
-        games = self.rps_handler.get_player_games(nick)
         if not args:
-            if not games:
-                self.conn.say('You have no current games.', nick)
-            else:
-                self.conn.say('player: your move', nick)
-                for g in games:
-                    self.conn.say('{}: {}'.format(g, games[g]), nick)
+            self._rps_show_games(nick)
             return
-        challee = get_true_nick(args.pop(0))
-        if challee == nick:
+        other = get_true_nick(args.pop(0))
+        if other == nick:
             self.conn.say('Rock Paper Scissors is best played with two people.', nick)
             return
-        if challee in optouts:
-            self.conn.say('{} has opted out of the Rock Paper Scissors system.'.format(challee), nick)
+        if other in optouts:
+            self.conn.say('{} has opted out of the Rock Paper Scissors system.'.format(other), nick)
             return
         if not args:
-            if challee in optouts:
-                self.conn.say('{} has opted out of the Rock Paper Scissors system.'.format(challee), nick)
-            elif challee in games:
-                self.conn.say('You are currently in a game with {}. You have played a {}.'.format(challee, games[challee]), nick)
-            else:
-                self.conn.say('You are not currently in a game with {}.'.format(challee), nick)
-        elif len(args) > 1:
-            self.conn.say('I need 0, 1 or 2 args.')
+            self._rps_show_game_with(nick, other)
+            return
+        move = self.rps_handler.get_move(args.pop())
+        if args:
+            # Too many arguments given
+            self.conn.say('I need 0, 1 or 2 args.', data['channel'])
+            return
+        if data['channel'].startswith('#'):
+            # Player has declared their move in a channel rather than a PM
+            self.conn.say('You should probably try that in a private message to me.', data['channel'])
+            return
+        if move is None:
+            # Invalid move supplied
+            self.conn.say('Valid commands are "rock", "paper", "scissors".', nick)
+            return
+        result = self._rps_play(nick, other, move)
+        if result is None:
+            self.conn.say('You have challenged {} to a game of Rock Paper Scissors.'.format(other), nick)
+            self.conn.say('{} has challenged you to a game of Rock Paper Scissors.'.format(nick), other)
+            return
+        winner, other_move = result
+        self.conn.say('You play a {}; {} plays a {}.'.format(move, other, other_move), nick)
+        self.conn.say('You play a {}; {} plays a {}.'.format(other_move, nick, move), other)
+        if winner is False:
+            for p in (nick, other):
+                self.conn.say('You draw!', p)
         else:
-            if data['channel'].startswith('#'):
-                self.conn.say('You should probably try that in a private message to me.', data['channel'])
-                return
-            move = self.rps_handler.get_move(args.pop())
-            if move is None:
-                self.conn.say('Valid commands are "rock", "paper", "scissors".', nick)
-                return
-            result = self._play_rps(nick, challee, move)
-            if result is None:
-                self.conn.say('You have challenged {} to a game of Rock Paper Scissors.'.format(challee), nick)
-                self.conn.say('{} has challenged you to a game of Rock Paper Scissors.'.format(nick), challee)
-                return
-            winner, challee_move = result
-            self.conn.say('You play a {}; {} plays a {}.'.format(move, challee, challee_move), nick)
-            self.conn.say('You play a {}; {} plays a {}.'.format(challee_move, nick, move), challee)
-            if winner is False:
-                for p in (nick, challee):
-                    self.conn.say('You draw!', p)
-            else:
-                loser = {nick, challee}.difference({winner}).pop()
-                outcomes = {winner: 'win', loser: 'lose'}
-                for p in outcomes:
-                    self.conn.say('You {}!'.format(outcomes[p]), p)
+            loser = {nick, other}.difference({winner}).pop()
+            outcomes = {winner: 'win', loser: 'lose'}
+            for p in outcomes:
+                self.conn.say('You {}!'.format(outcomes[p]), p)
 
     def rps_optout(self, args, data):
         """Opt in to or out of bunbot's Rock Paper Scissors system."""
@@ -432,7 +451,8 @@ class CommandLib:
         inout = 'out of' if out else 'in to'
         self.conn.say('You have opted {} the Rock Paper Scissors system.'.format(inout), data['nick'])
 
-
+    def rps_league(self, args, data):
+        self.conn.say('http://bunburya.netsoc.ie/rps/freenode.html', data['channel'])
 
     ###
     # Below are functions called every time a PRIVMSG is received.
