@@ -67,22 +67,16 @@ class IRCConn:
         Call handle_encoing_error() if unsuccessful.
         """
         buf = []
-        while True:
-            nxt_ch = None
-            ch = self._sock.recv(1)
-            if ch == b'\r':
-                nxt_ch = self._sock.recv(1)
-                if nxt_ch == b'\n':
-                    try:
-                        line = b''.join(buf).decode()
-                    except (UnicodeEncodeError, UnicodeDecodeError):
-                        self.handle_encoding_error()
-                        return ''
-                    print('received:', line)
-                    return line
-            buf.append(ch)
-            if nxt_ch:
-                buf.append(nxt_ch)
+        while buf[-2:] != [b'\r', b'\n']:
+            buf.append(self._sock.recv(1))
+
+        try:
+            line = b''.join(buf).decode()
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            self.handle_encoding_error()
+            return ''
+        print('received:', line)
+        return line
             
         if not line.strip():
             return None
@@ -99,7 +93,7 @@ class IRCConn:
             # empty line; this should throw up an error.
             return
         line = line.strip('\r\n')
-        tokens = line.split(' ')
+        tokens = line.split()
         if tokens[0].startswith(':'):
             prefix = tokens.pop(0)[1:].strip(':')
         else:
