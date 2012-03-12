@@ -78,16 +78,6 @@ class IRCConn:
         print('received:', line)
         return line
             
-        if not line.strip():
-            return None
-        else:
-            try:
-                parsable = line.strip(b'\r\n').decode()
-                print('received:', parsable)
-                return parsable
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                self.handle_encoding_error()
-    
     def parse(self, line):
         if not line:
             # empty line; this should throw up an error.

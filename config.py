@@ -150,7 +150,7 @@ class CommandLib:
         elif unaddr in self.unaddr_funcs:
             ans = unaddr, getattr(self.unaddr_funcs[unaddr], '__doc__')
         else:
-            ans = addr, 'Not found'
+            ans = addr, 'Not found. Did you perhaps mean to call !doc?'
         self.conn.say('{}: {}'.format(*ans), chan)
 
     def _gen_help(self, chan):
