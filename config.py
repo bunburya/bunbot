@@ -3,9 +3,9 @@ path.append('/home/bunburya/bin')
 
 from subprocess import Popen, PIPE
 from urllib.request import urlopen
-from urllib.parse import quote as urlquote
+from urllib.parse import urlparse, quote as urlquote
 from random import random, choice
-from re import split
+from re import split, findall, compile as re_compile
 from os.path import join, expanduser, isdir
 from os import mkdir
 from hashlib import md5
@@ -14,14 +14,12 @@ from sys import version
 from alias_handler import get_true_nick, get_aliases
 from msg import MessageHandler, CorruptedFileError as MsgError
 from stock import get_quote
-from bf import gen_bf
 from pep import main as pep
 from reddit import rand_item
 from pydoc import splitdoc
 from doc import doc_from_str
 from rpn import eval_rpn, InputError as RPNError
 from euler import summary
-from textgen import TextGenerator
 from basearch import search
 from twitter import get_tweets_from, get_tweet_text
 from rps import RockPaperScissors
@@ -49,6 +47,7 @@ class CommandLib:
         self.conn = bot.conn
         self.setup()
         self.addr_funcs = {}
+        self.url_re = re_compile(r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))')
         self.unaddr_funcs = {'!fortune': self.fortune, '!k': self.k,
                             '!stock': self.stock, '!maxim': self.maxim,
                             '!pep': self.pep, '!reddit': self.reddit,
@@ -61,12 +60,18 @@ class CommandLib:
                             '!snowman': self.snowman, '!beer': self.beer,
                             '!twitter': self.twitter, '!rps': self.rps,
                             '!rps-optout': self.rps_optout,
-                            '!rps-league': self.rps_league}
+                            '!rps-league': self.rps_league,
+                            '!lasturl': self.lasturl,
+                            '!lastfrom': self.lastfrom}
+        self.regex_funcs = {self.url_re: self.handle_url}
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
         self.all_privmsg_funcs = []
         self.admin_funcs = {'join': self.join, 'part': self.part, 'say': self.say,
-                'nick': self.nick}
+                'nick': self.nick, 'quit': self.quit}
+        self.MAXARGS = 3    # in functions that issues a separate response
+                            # for each arg given, this sets a limit to
+                            # the number of args that will be considered.
         
     def setup(self):
         """
@@ -90,6 +95,10 @@ class CommandLib:
 
         # Admin stuff
         self.admin_pass_file = join(self.store_dir, 'admin_pass')
+
+        # URL handling
+        self.last_url_from_domain = {}
+        self.last_url = None
 
     ###
     # Below are functions that can be called by other users within the channel
@@ -164,7 +173,7 @@ class CommandLib:
     def help(self, args, data):
         """Return help on a specific function, or a list of available functions."""
         if args:
-            for arg in args:
+            for arg in args[:self.MAXARGS]:
                 self._func_help(arg, data['channel'])
         else:
             self._gen_help(data['channel'])
@@ -187,7 +196,7 @@ class CommandLib:
             self.conn.say('Give me a stock symbol.', data['channel'])
             return
         quotes = get_quote(' '.join(args))
-        for co in quotes[:13]:
+        for co in quotes[:self.MAXARGS]:
             sym, price, change = co
             if price == '0.00' and change == 'N/A':
                 self.conn.say('{} not found'.format(sym), data['channel'])
@@ -210,7 +219,7 @@ class CommandLib:
         """Return the titles of and links to the PEPs with the given numbers."""
         if not args:
             self.conn.say('Give me a PEP number.', data['channel'])
-        for t in args[:13]:
+        for t in args[:self.MAXARGS]:
             info = pep(t)
             for d in info:
                 self.conn.say(d, data['channel'])
@@ -232,7 +241,7 @@ class CommandLib:
         """Return documentation for the given Python objects."""
         if not args:
             self.conn.say('Give me a Python object.', data['channel'])
-        for t in args[:13]:
+        for t in args[:self.MAXARGS]:
             ans = []
             docstr = doc_from_str(t)
             if docstr is None:
@@ -271,7 +280,7 @@ class CommandLib:
         """Return a summary of, and link to, each of the specified Project Euler problems."""
         if not args:
             self.conn.say('Give me a problem number.', data['channel'])
-        for arg in args[:13]:
+        for arg in args[:self.MAXARGS]:
             if arg in self.euler_cache:
                 summ, url = self.euler_cache[arg]
             else:
@@ -339,7 +348,7 @@ class CommandLib:
         """Return the last tweet of up to three given twitter users."""
         if not args:
             self.conn.say('Give me a twitter user.', data['channel'])
-        names = args[:3]
+        names = args[:self.MAXARGS]
         to_say = []
         for n in names:
             tweet = get_tweets_from(n, 1)
@@ -432,6 +441,7 @@ class CommandLib:
         if result is None:
             self.conn.say('You have challenged {} to a game of Rock Paper Scissors.'.format(other), nick)
             self.conn.say('{} has challenged you to a game of Rock Paper Scissors.'.format(nick), other)
+            self.conn.say('Respond with !rps {} <move>. Type !help rps for more details.'.format(nick), other) 
             return
         winner, other_move = result
         self.conn.say('You play a {}; {} plays a {}.'.format(move, other, other_move), nick)
@@ -454,6 +464,17 @@ class CommandLib:
     def rps_league(self, args, data):
         self.conn.say('http://bunburya.netsoc.ie/rps/freenode.html', data['channel'])
 
+    def lasturl(self, args, data):
+        self.conn.say(str(self.last_url), data['channel'])
+
+    def lastfrom(self, args, data):
+        if not args:
+            self.conn.say('Give me a domain name (eg google.com).', data['channel'])
+            return
+        for a in args[:self.MAXARGS]:
+            last = str(self.last_url_from_domain.get(a, None))
+            self.conn.say('{}: {}'.format(a, last), data['channel'])
+
     ###
     # Below are functions called every time a PRIVMSG is received.
     ###
@@ -468,6 +489,25 @@ class CommandLib:
         if msgs:
             self.conn.say('You have {} messages. Say "!msg" to see them.'.format(len(msgs)),
                             nick)
+
+    ###
+    # Below are functions tied to particular regular expressions.
+    ###
+
+    def _get_domain(self, netloc):
+        netloc = netloc.split(':')[0]
+        segs = netloc.split('.')
+        if len(segs) > 2:
+            netloc = '.'.join(segs[-2:])
+        return netloc
+
+    def handle_url(self, groups):
+        url = groups[0][0]  # this is a result of the regex we use
+        self.last_url = url
+        parse_res = urlparse(url)
+        domain = self._get_domain(parse_res.netloc)
+        print('domain:', domain)
+        self.last_url_from_domain[domain] = url
 
     ###
     # Below are admin-related functions.
@@ -489,3 +529,6 @@ class CommandLib:
     def nick(self, args, data):
         if args:
             self.conn.nick(args[0])
+
+    def quit(self, args, data):
+        quit()
