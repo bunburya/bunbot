@@ -93,9 +93,9 @@ class IRCConn:
         if cmd == '433':    # nick already in use
             self._nick += '_'
             self.nick(self._nick)
-        if cmd == '376':    # end of MOTD
+        elif cmd == '376':    # end of MOTD
             self.on_connect()
-        if cmd == 'PING':
+        elif cmd == 'PING':
             self.pong(' '.join(tokens))
         elif cmd == 'ERROR':
             self.handle_error(tokens)
