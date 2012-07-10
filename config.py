@@ -87,7 +87,10 @@ class CommandLib:
         self.msg_handler = MessageHandler(msg_file)
         
         # Rock Paper Scissors system
-        rps_dir = join(self.store_dir, 'rps', self.bot.ident.host)
+        rps_dir = join(self.store_dir, 'rps')
+        if not isdir(rps_dir):
+            mkdir(rps_dir)
+        rps_serv_dir = join(rps_dir, self.bot.ident.host)
         self.rps_handler = RockPaperScissors(rps_dir)
 
         # Set up caches for various functions
