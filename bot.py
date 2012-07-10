@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from imp import reload
+from re import findall
 
 import config, connect
 
@@ -55,7 +56,11 @@ class Bot:
         else:
             for func in self.cmds.all_privmsg_funcs:
                 func(tokens, data)
-
+            for pattern in self.cmds.regex_funcs:
+                groups = findall(pattern, ' '.join(tokens))
+                if groups:
+                    self.cmds.regex_funcs[pattern](groups)
+        
     def handle_other_nick(self, tokens, changer):
         new_nick = tokens.pop().strip(':')
         old_nick, host = changer.split('!')

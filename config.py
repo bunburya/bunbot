@@ -10,19 +10,19 @@ from os.path import join, expanduser, isdir
 from os import mkdir
 from hashlib import md5
 from sys import version
-
-from alias_handler import get_true_nick, get_aliases
-from msg import MessageHandler, CorruptedFileError as MsgError
-from stock import get_quote
-from pep import main as pep
-from reddit import rand_item
 from pydoc import splitdoc
-from doc import doc_from_str
-from rpn import eval_rpn, InputError as RPNError
-from euler import summary
-from basearch import search
-from twitter import get_tweets_from, get_tweet_text
-from rps import RockPaperScissors
+
+from utils.alias_handler import get_true_nick, get_aliases
+from utils.msg import MessageHandler, CorruptedFileError as MsgError
+from utils.stock import get_quote
+from utils.pep import main as pep
+from utils.reddit import rand_item
+from utils.doc import doc_from_str
+from utils.rpn import eval_rpn, InputError as RPNError
+from utils.euler import summary
+from utils.basearch import search
+from utils.twitter import get_tweets_from, get_tweet_text
+from utils.rps import RockPaperScissors
 
 class Identity:
     """
@@ -163,7 +163,7 @@ class CommandLib:
         self.conn.say('{}: {}'.format(*ans), chan)
 
     def _gen_help(self, chan):
-        addr = ', '.join([i for i in self.addr_funcs.keys() if i])
+        addr = ', '.join(filter(None, self.addr_funcs.keys()))
         unaddr = ', '.join(self.unaddr_funcs.keys())
         if addr:
             self.conn.say('Commands that must be addressed to me: {0}'.format(addr), chan)
