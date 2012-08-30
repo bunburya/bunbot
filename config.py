@@ -23,6 +23,7 @@ from utils.euler import summary
 from utils.basearch import search
 from utils.twitter import get_tweets_from, get_tweet_text
 from utils.rps import RockPaperScissors
+from utils.spanish import translate
 
 class Identity:
     """
@@ -62,7 +63,8 @@ class CommandLib:
                             '!rps-optout': self.rps_optout,
                             '!rps-league': self.rps_league,
                             '!lasturl': self.lasturl,
-                            '!lastfrom': self.lastfrom}
+                            '!lastfrom': self.lastfrom,
+                            '!es': self.es}
         self.regex_funcs = {self.url_re: self.handle_url}
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
@@ -468,15 +470,26 @@ class CommandLib:
         self.conn.say('http://bunburya.netsoc.ie/rps/freenode.html', data['channel'])
 
     def lasturl(self, args, data):
+        """Return the last URL posted to the channel."""
         self.conn.say(str(self.last_url), data['channel'])
 
     def lastfrom(self, args, data):
+        """Return the last URL from the given domain(s) posted to the channel."""
         if not args:
             self.conn.say('Give me a domain name (eg google.com).', data['channel'])
             return
         for a in args[:self.MAXARGS]:
             last = str(self.last_url_from_domain.get(a, None))
             self.conn.say('{}: {}'.format(a, last), data['channel'])
+
+    def es(self, args, data):
+        """Translates one word at a time from English to Spanish, or vice versa."""
+        if not args:
+            self.conn.say('Give me an English or Spanish word.', data['channel'])
+            return
+        for a in args[:self.MAXARGS]:
+            trans = ' '.join(translate(a)) or 'No translation found.'
+            self.conn.say('{}: {}'.format(a, trans), data['channel'])
 
     ###
     # Below are functions called every time a PRIVMSG is received.
