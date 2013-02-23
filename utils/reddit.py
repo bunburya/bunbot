@@ -24,9 +24,10 @@ def rand_item(sub='all'):
     url = SUB_URL.format(sub)
     try:
         data = loads(urlopen(url).read().decode('utf-8'))
+        print(data)
     except (ValueError, HTTPError):
         return None, None
-    if data.get('error', None) == '404':
+    if data.get('error', None) is not None:
         return None, None
     posts = data['data']['children']
     post_data = choice(posts)['data']

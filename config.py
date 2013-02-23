@@ -59,12 +59,12 @@ class CommandLib:
                             '!source': self.source, '!lol': self.lol,
                             '!admin': self.admin, '!google': self.google,
                             '!snowman': self.snowman, '!beer': self.beer,
-                            '!twitter': self.twitter, '!rps': self.rps,
+                            '!rps': self.rps,
                             '!rps-optout': self.rps_optout,
                             '!rps-league': self.rps_league,
                             '!lasturl': self.lasturl,
                             '!lastfrom': self.lastfrom,
-                            '!es': self.es}
+                            '!es': self.es, '@dentalplan': self.dentalplan}
         self.regex_funcs = {self.url_re: self.handle_url}
         self.other_join_funcs = [self.msg_notify]
         self.other_nick_funcs = [self.msg_notify]
@@ -237,7 +237,7 @@ class CommandLib:
             sub = args[0]
         post, link = rand_item(sub)
         if post is None:
-            self.conn.say('{}: No such subreddit.'.format(sub),
+            self.conn.say('{}: No such subreddit (or some other error occurred).'.format(sub),
                             data['channel'])
         else:
             self.conn.say('{} ({})'.format(post, link), data['channel'])
@@ -348,6 +348,9 @@ class CommandLib:
         more = total - limit
         if more > 0:
             self.conn.say(self.more_beer.format(more, url), data['channel'])
+
+    def beer(self, args, data):
+        self.conn.say('Temporarily out of service :-(', data['channel'])
 
     def twitter(self, args, data):
         """Return the last tweet of up to three given twitter users."""
@@ -490,6 +493,9 @@ class CommandLib:
         for a in args[:self.MAXARGS]:
             trans = ' '.join(translate(a)) or 'No translation found.'
             self.conn.say('{}: {}'.format(a, trans), data['channel'])
+
+    def dentalplan(self, args, data):
+        self.conn.say('!lisaneedsbraces', data['channel'])
 
     ###
     # Below are functions called every time a PRIVMSG is received.
