@@ -2,10 +2,24 @@
 
 from imp import reload
 from re import findall
+from collections import OrderedDict
 
 import config, connect
 
+class MessageData:
+    
+    def __init__(self, **kwargs):
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
+
+
 class Bot:
+
+    valid_hooks = {
+            'command',
+            'privmsg_re'
+            # TODO: implement more
+            }
     
     def __init__(self, host=None, chan=None, nick=None):
         self.ident = config.Identity()
@@ -16,10 +30,16 @@ class Bot:
         if nick:
             self.ident.nick = nick
             self.ident.ident = nick
+
+        self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
+
         self.conn = connect.IRCConn(self)
         self.cmds = config.CommandLib(self)
         self.conn.connect()
         self.conn.mainloop()
+
+    def add_hook(self, hook_type, key, func):
+        self.hooks[hook_type][key] = func
     
     def reload_cmds(self):
         self.cmds = reload(config).CommandLib(self)
@@ -37,8 +57,14 @@ class Bot:
         nick, host = sender.split('!')        
         if chan == self.ident.nick:
             chan = nick
-        data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me,
-                'nick': nick, 'host': host}
+
+        string = ' '.join(tokens)
+
+        #data = {'channel': chan, 'sender': sender, 'is_to_me': is_to_me,
+        #        'nick': nick, 'host': host}
+        data = MessageData(channel=chan, sender=sender, recip=recip,
+                is_to_me=is_to_me, nick=nick, host=host, tokens=tokens,
+                string=string)
 
         try:
             cmd = tokens[0]

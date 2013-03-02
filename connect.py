@@ -72,7 +72,7 @@ class IRCConn:
 
         try:
             line = b''.join(buf).decode()
-        except (UnicodeDecodeError, UnicodeEncodeError):
+        except (UnicodeError):
             self.handle_encoding_error()
             return ''
         print('received:', line)
@@ -90,6 +90,9 @@ class IRCConn:
             prefix = ''
         
         cmd = tokens.pop(0)
+
+        # Maybe best to create MessageData here??
+
         if cmd == '433':    # nick already in use
             self._nick += '_'
             self.nick(self._nick)
