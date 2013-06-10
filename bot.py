@@ -17,33 +17,17 @@ class MessageData:
         self.tokens = None
         self.string = None
 
-
-class Bot:
-
-    valid_hooks = {
-            'command',
-            'privmsg_re'
-            # TODO: implement more
-            }
+class HandlerLib:
     
-    def __init__(self, host=None, chan=None, nick=None):
-        self.ident = config.Identity()
-        if host:
-            self.ident.host = host
-        if chan:
-            self.ident.joins = [chan]
-        if nick:
-            self.ident.nick = nick
-            self.ident.ident = nick
-
-        self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
-
-        self.conn = connect.IRCConn(self)
-        self.cmds = config.CommandLib(self)
-        self.conn.connect()
-        self.conn.mainloop()
+    """This class contains functions for handling various IRC events."""
     
-    def on_connect(self, data):
+    def __init__(self, bot):
+        self.bot = bot
+        self.ident = bot.ident
+        self.conn = bot.conn
+        self.plugin_handler = bot.plugin_handler
+    
+    def handle_connect(self, data):
         """
         Called once we have connected to and identified with the server.
         Mainly joins the channels that we want to join at the start.
@@ -66,14 +50,16 @@ class Bot:
     def handle_privmsg(self, data):
         
         try:
-            cmd = tokens[0]
+            cmd = data.tokens[0]
         except IndexError:
             cmd = None
-        try:
-            args = tokens[1:]
-        except IndexError:
-            args = []
         
+        self.plugin_handler.exec_cmd_if_exists(data)
+        self.plugin_handler.exec_privmsg_re_if_exists(data)
+        self.plugin_handler.exec_privmsg(data)
+        
+        # This has to be changed
+        """ Old code
         if is_to_me and (cmd in self.cmds.addr_funcs):
             self.cmds.addr_funcs[cmd](args, data)
         elif cmd in self.cmds.unaddr_funcs:
@@ -85,10 +71,62 @@ class Bot:
                 groups = findall(pattern, ' '.join(tokens))
                 if groups:
                     self.cmds.regex_funcs[pattern](groups)
+        """
         
     def handle_nick(self, data):
         if data.from_nick != self.ident.nick:
             self.hooks['other_nick_change'][''](data)
+    
+    def handle(self, data):
+        """This is the function that is called externally.  It decides
+        which handler should be used and calls that handler."""
+        if cmd == '433':    # nick already in use
+            handler = self.handle_nick_in_use
+        elif cmd == '376':    # end of MOTD
+            handler = self.handle_connect
+        elif cmd == 'PING':
+            handler = self.handle_ping
+        elif cmd == 'ERROR':
+            handler = self.handle_errors
+        elif cmd == 'JOIN':
+            data.to = tokens.pop(0)
+            handler = self.handle_join
+        elif cmd == 'PRIVMSG':
+            data.to = tokens.pop(0)
+            handler = self.handle_privmsg
+        elif cmd == 'NICK':
+            data.to = tokens.pop(0)
+            handler = self.handle_nick
+
+class Bot:
+
+    valid_hooks = {
+            'command',
+            'privmsg_re'
+            # TODO: implement more
+            }
+    
+    def __init__(self, host=None, chan=None, nick=None):
+        self.ident = config.Identity()
+        if host:
+            self.ident.host = host
+        if chan:
+            self.ident.joins = [chan]
+        if nick:
+            self.ident.nick = nick
+            self.ident.ident = nick
+
+        self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
+
+        self.conn = connect.IRCConn(self)
+        # CommandLib depreciated in favour of PluginHandler
+        # self.cmds = config.CommandLib(self)
+        self.plugin_handler = PluginHandler(self)
+        self.conn.connect()
+        self.conn.mainloop()
+        self.handlers = HandlerLib(self)
+    
+    
     
     def parse(self, line):
         if not line:
@@ -108,39 +146,11 @@ class Bot:
         data.irc_cmd = cmd
         if prefix:
             data.from_nick, data.from_host = prefix.split('!')
-
-        if cmd == '433':    # nick already in use
-            handler = self.handle_nick_in_use
-        elif cmd == '376':    # end of MOTD
-            handler = self.on_connect
-        elif cmd == 'PING':
-            handler = self.handle_ping
-        elif cmd == 'ERROR':
-            handler = self.handle_errors
-        elif cmd == 'JOIN':
-            data.to = tokens.pop(0)
-            handler = self.handle_join
-        elif cmd == 'PRIVMSG':
-            data.to = tokens.pop(0)
-            handler = self.handle_privmsg
-        elif cmd == 'NICK':
-            data.to = tokens.pop(0)
-            handler = self.handle_nick
-        
+                    
         data.tokens = tokens
         data.string = ' '.join(tokens)
-        handler(data)
+        self.handlers.handle(data)
 
-    def add_hook(self, hook_type, key, func):
-        # empty key will always fire
-        self.hooks[hook_type][key] = func
-    
-    def fire_hook(self, hook_type, key, data):
-        try:
-            self.hooks[hook_type][key](data)
-        except KeyError:
-            # should probably do something here
-            pass
     
     def reload_cmds(self):
         self.cmds = reload(config).CommandLib(self)

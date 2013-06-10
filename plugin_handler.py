@@ -26,13 +26,15 @@ class PluginHandler:
     def __init__(self, bot, plugin_dir):
         self.bot = bot
         self.plugin_dir = plugin_dir
+        self.hooks = {hook_type: [] for hook_type in self.valid_hooks}
+        self.hooks_by_plugin = {hook_type: [] for hook_type in self.valid_hooks}
         # NOTE: See if we actually need an OrderedDict (as opp dict) here
         self.loaded_plugins = OrderedDict()
 
     def register_hook(self, hook_type, plugin, key, func):
         if not hook_type in self.valid_hooks:
             raise PluginLoaderException('Invalid hook type: {}'.format(hook_type))
-        self.bot.add_hook(hook_type, key, func)
+        self.hooks[hook_type][key] = func
         try:
             self.hooks_by_plugin[hook_type][plugin].append(key)
         except KeyError:
@@ -47,6 +49,16 @@ class PluginHandler:
             key = hook['key']
             func = hook['func']
             self.register_hook(hook_type, name, key, func)
+    
+    def exec_cmd_if_exists(self, cmd, data):
+        if cmd in self.hooks['command']:
+            return self.hooks['command'][cmd](data)
+    
+    def exec_privmsg_re_if_exists(self, data):
+        for re in self.hooks['privmsg_re']:
+            if re.match(data.string):
+                return self.hooks['privmsg_re'][re](data)
 
-
-
+    def exec_privmsg(self, data):
+        for hook in self.hooks['privmsg']:
+            hook(data)
