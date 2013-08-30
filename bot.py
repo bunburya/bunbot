@@ -3,8 +3,10 @@
 from imp import reload
 from re import findall
 from collections import OrderedDict
+from os.path import dirname, join
 
 import config, connect
+from plugin_handler import PluginHandler
 
 class MessageData:
     
@@ -44,8 +46,9 @@ class HandlerLib:
 
     def handle_join(self, data):
         if data.from_nick != self.ident.nick:
-            for func in self.cmds.other_join_funcs:
-                func(data)
+            self.plugin_handler.exec_other_join(data)
+        else:
+            self.plugin_handler.exec_self_join(data)
     
     def handle_privmsg(self, data):
         
@@ -80,6 +83,7 @@ class HandlerLib:
     def handle(self, data):
         """This is the function that is called externally.  It decides
         which handler should be used and calls that handler."""
+        cmd = data.irc_cmd
         if cmd == '433':    # nick already in use
             handler = self.handle_nick_in_use
         elif cmd == '376':    # end of MOTD
@@ -89,14 +93,17 @@ class HandlerLib:
         elif cmd == 'ERROR':
             handler = self.handle_errors
         elif cmd == 'JOIN':
-            data.to = tokens.pop(0)
+            data.to = data.tokens.pop(0)
             handler = self.handle_join
         elif cmd == 'PRIVMSG':
-            data.to = tokens.pop(0)
+            data.to = data.tokens.pop(0)
             handler = self.handle_privmsg
         elif cmd == 'NICK':
-            data.to = tokens.pop(0)
+            data.to = data.tokens.pop(0)
             handler = self.handle_nick
+        else:
+            handler = lambda d: True    # this is probably not the best 
+        handler(data)
 
 class Bot:
 
@@ -121,11 +128,10 @@ class Bot:
         self.conn = connect.IRCConn(self)
         # CommandLib depreciated in favour of PluginHandler
         # self.cmds = config.CommandLib(self)
-        self.plugin_handler = PluginHandler(self)
+        self.plugin_handler = PluginHandler(self, join(dirname(__file__), 'plugins'))
+        self.handlers = HandlerLib(self)
         self.conn.connect()
         self.conn.mainloop()
-        self.handlers = HandlerLib(self)
-    
     
     
     def parse(self, line):
@@ -135,6 +141,8 @@ class Bot:
         line = line.strip('\r\n')
         tokens = line.split()
         if tokens[0].startswith(':'):
+            # Not sure if this if-else is necessary, as possibly lines
+            # always start with ":"
             prefix = tokens.pop(0)[1:].strip(':')
         else:
             prefix = ''
@@ -144,8 +152,10 @@ class Bot:
         # Maybe best to create MessageData here??
         data = MessageData()
         data.irc_cmd = cmd
-        if prefix:
+        try:
             data.from_nick, data.from_host = prefix.split('!')
+        except ValueError:
+            pass
                     
         data.tokens = tokens
         data.string = ' '.join(tokens)
