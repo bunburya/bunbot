@@ -38,7 +38,7 @@ class Identity:
     nick = 'bunbot'
     
     joins = [
-            '#python-forum',
+            '#bunbot-test',
             ]
 
 class CommandLib:

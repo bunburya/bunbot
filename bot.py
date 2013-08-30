@@ -15,7 +15,7 @@ class MessageData:
         self.to = None
         self.from_nick = None
         self.from_host = None
-        self.channel = None
+        #self.channel = None    # replaced by self.to
         self.tokens = None
         self.string = None
 
@@ -42,7 +42,7 @@ class HandlerLib:
         self.conn.connect()
     
     def handle_ping(self, data):
-        self.conn.pong(data.string)
+        self.plugin_handler.exec_hook('ping', None, data)
 
     def handle_join(self, data):
         if data.from_nick != self.ident.nick:
@@ -52,14 +52,11 @@ class HandlerLib:
     
     def handle_privmsg(self, data):
         
-        try:
-            cmd = data.tokens[0]
-        except IndexError:
-            cmd = None
-        
-        self.plugin_handler.exec_cmd_if_exists(data)
         self.plugin_handler.exec_privmsg_re_if_exists(data)
         self.plugin_handler.exec_privmsg(data)
+        # Always call exec_cmd_if_exists last, as it alters
+        # data.tokens
+        self.plugin_handler.exec_cmd_if_exists(data)
         
         # This has to be changed
         """ Old code
