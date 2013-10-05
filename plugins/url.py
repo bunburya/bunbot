@@ -31,8 +31,6 @@ class Plugin:
         Parses the url and stores info about it to be accessed
         by other functions."""
         match = data.regex_match
-        print(match.string)
-        print(match.groups())
         url, domain, ipv4, ipv6, port, filepath = match.groups()
         self.url_data = {}
         self.url_data['url'] = url
@@ -43,7 +41,6 @@ class Plugin:
         self.url_data['filepath'] = filepath
 
     def title(self, data):
-        print('url is {}'.format(self.url_data['url']))
         try:
             html = urlopen(self.url_data['url']).readall()
         except URLError:

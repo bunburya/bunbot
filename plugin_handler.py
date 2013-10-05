@@ -102,10 +102,8 @@ class PluginHandler:
 
     def exec_privmsg_re_if_exists(self, data):
         for regex in self.hooks['privmsg_re']:
-            print('testing {} against {}'.format(regex, data.string))
             match = re.search(regex, data.string)
             if match:
-                print('matched {}'.format(regex))
                 data.regex_match = match
                 for hook in self.hooks['privmsg_re'][regex]:
                     hook.func(data)
