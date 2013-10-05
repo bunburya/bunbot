@@ -18,6 +18,7 @@ class MessageData:
         #self.channel = None    # replaced by self.to
         self.tokens = None
         self.string = None
+        self.regex_match = None
 
 class HandlerLib:
     
@@ -42,13 +43,14 @@ class HandlerLib:
         self.conn.connect()
     
     def handle_ping(self, data):
-        self.plugin_handler.exec_hook('ping', None, data)
+        self.plugin_handler.exec_hooks('ping', None, data)
 
     def handle_join(self, data):
         if data.from_nick != self.ident.nick:
             self.plugin_handler.exec_other_join(data)
         else:
             self.plugin_handler.exec_self_join(data)
+
     
     def handle_privmsg(self, data):
         

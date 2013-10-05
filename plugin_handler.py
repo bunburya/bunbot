@@ -3,6 +3,7 @@ from os.path import dirname, basename
 from sys import path
 from importlib import import_module
 from collections import OrderedDict
+import re
 
 class PluginLoaderException: pass
 
@@ -64,7 +65,10 @@ class PluginHandler:
         hook = Hook(hook_type, key, func, plugin)
         if not hook_type in self.valid_hooks:
             raise PluginLoaderException('Invalid hook type: {}'.format(hook_type))
-        self.hooks[hook_type][key] = hook
+        if key in self.hooks[hook_type]:
+            self.hooks[hook_type][key].append(hook)
+        else:
+            self.hooks[hook_type][key] = [hook]
         try:
             self.hooks_by_plugin[hook_type][plugin].append(key)
         except KeyError:
@@ -83,19 +87,28 @@ class PluginHandler:
             self.register_hook(hook_type, name, key, func)
         print('Loaded plugin {}'.format(name))
     
-    def exec_hook(self, hook_type, key, data):
-        return self.hooks[hook_type][key](data)
+    def exec_hooks(self, hook_type, key, data):
+        for hook in self.hooks[hook_type].get(key, []):
+            hook.func(data)
 
     def exec_cmd_if_exists(self, data):
         cmd = data.tokens.pop(0)[1:]
-        if cmd in self.hooks['command']:
-            print('cmd exists')
-            return self.hooks['command'][cmd].func(data)
+        self.exec_hooks('command', cmd, data)
     
     def exec_privmsg_re_if_exists(self, data):
         for re in self.hooks['privmsg_re']:
             if re.match(data.string):
                 return self.hooks['privmsg_re'][re].func(data)
+
+    def exec_privmsg_re_if_exists(self, data):
+        for regex in self.hooks['privmsg_re']:
+            print('testing {} against {}'.format(regex, data.string))
+            match = re.search(regex, data.string)
+            if match:
+                print('matched {}'.format(regex))
+                data.regex_match = match
+                for hook in self.hooks['privmsg_re'][regex]:
+                    hook.func(data)
 
     def exec_privmsg(self, data):
         for hook in self.hooks['privmsg']:
