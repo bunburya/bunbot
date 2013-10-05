@@ -6,6 +6,18 @@ from collections import OrderedDict
 
 class PluginLoaderException: pass
 
+class Hook:
+
+    """Contain information about what functions are called, and when.
+    Hooks are stored in plugin scripts as dicts and converted to instances
+    of the Hook class by the PluginHandler."""
+
+    def __init__(self, hook_type=None, key=None, func=None, pname=None):
+        self.plugin_name = pname
+        self.type = hook_type
+        self.func = func
+        self.key = key
+
 class PluginHandler:
 
     # Different types of hooks we want to implement:
@@ -49,9 +61,10 @@ class PluginHandler:
         # TODO: Replace dicts with Hook class.
         # Hooks should contain name of parent plugin, so we can have multiple
         # hooks per key and still be able to remove them properly.
+        hook = Hook(hook_type, key, func, plugin)
         if not hook_type in self.valid_hooks:
             raise PluginLoaderException('Invalid hook type: {}'.format(hook_type))
-        self.hooks[hook_type][key] = func
+        self.hooks[hook_type][key] = hook
         try:
             self.hooks_by_plugin[hook_type][plugin].append(key)
         except KeyError:
@@ -77,16 +90,16 @@ class PluginHandler:
         cmd = data.tokens.pop(0)[1:]
         if cmd in self.hooks['command']:
             print('cmd exists')
-            return self.hooks['command'][cmd](data)
+            return self.hooks['command'][cmd].func(data)
     
     def exec_privmsg_re_if_exists(self, data):
         for re in self.hooks['privmsg_re']:
             if re.match(data.string):
-                return self.hooks['privmsg_re'][re](data)
+                return self.hooks['privmsg_re'][re].func(data)
 
     def exec_privmsg(self, data):
         for hook in self.hooks['privmsg']:
-            hook(data)
+            hook.func(data)
 
     # Change these
     
