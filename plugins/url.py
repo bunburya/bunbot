@@ -1,5 +1,6 @@
 from urllib.request import urlopen
 from urllib.error import URLError
+from html.parser import HTMLParseError
 import re
 
 from bs4 import BeautifulSoup
@@ -16,9 +17,10 @@ class Plugin:
         r'(?::(\d+))?' # optional port
         r'([/+]\S+)?)', re.IGNORECASE)
 
-    def __init__(self, bot):
+    def __init__(self, bot, handler):
         self.bot = bot
         self.conn = bot.conn
+        self.handler = handler
         self.ignore_titles = set() # TODO: save to/read from file
         self.hooks = [
                 {'type': 'privmsg_re', 'key': self.url_regex, 'func': self.parse_url},
@@ -43,9 +45,12 @@ class Plugin:
     def title(self, data):
         try:
             html = urlopen(self.url_data['url']).readall()
-        except URLError:
+        except (URLError):
             return
-        soup = BeautifulSoup(html)
+        try:
+            soup = BeautifulSoup(html)
+        except HTMLParseError:
+            return
         try:
             title = soup.find('head').find('title').text
         except AttributeError:

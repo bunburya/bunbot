@@ -77,7 +77,7 @@ class HandlerLib:
         
     def handle_nick(self, data):
         if data.from_nick != self.ident.nick:
-            self.hooks['other_nick_change'][''](data)
+            self.plugin_handler.exec_hooks('other_nick_change', '', data)
     
     def handle(self, data):
         """This is the function that is called externally.  It decides

@@ -79,7 +79,7 @@ class PluginHandler:
         #module = import_module('plugins.rev')  # TODO: fix this to import in general,
                                                 # maybe have plugins package instead of plugins dir
         module = import_module('.'.join((basename(plugin_dir), name)))
-        self.loaded_plugins[name] = plugin = module.Plugin(self.bot)
+        self.loaded_plugins[name] = plugin = module.Plugin(self.bot, self)
         for hook in plugin.hooks:
             hook_type = hook['type']
             func = hook['func']
@@ -88,7 +88,7 @@ class PluginHandler:
         print('Loaded plugin {}'.format(name))
     
     def exec_hooks(self, hook_type, key, data):
-        for hook in self.hooks[hook_type].get(key, []):
+        for hook in self.hooks.get(hook_type, {}).get(key, []):
             hook.func(data)
 
     def exec_cmd_if_exists(self, data):
@@ -103,9 +103,7 @@ class PluginHandler:
     def exec_privmsg_re_if_exists(self, data):
         for regex in self.hooks['privmsg_re']:
             match = re.search(regex, data.string)
-            print('testing')
             if match:
-                print('matched')
                 data.regex_match = match
                 for hook in self.hooks['privmsg_re'][regex]:
                     hook.func(data)
