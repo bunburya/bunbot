@@ -1,0 +1,10 @@
+[identity]
+ident = bunbot
+host = irc.snoonet.org
+server = cube.netsoc.tcd.ie
+name = Botty McBotson
+nick = bunbot
+
+[channels]
+join = #europe #truerope
+

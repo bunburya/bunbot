@@ -4,9 +4,12 @@ from imp import reload
 from re import findall
 from collections import OrderedDict
 from os.path import dirname, join
+from logging import getLogger, FileHandler, Formatter
 
-import config, connect
+import connect
+from config import get_config
 from plugin_handler import PluginHandler
+from sys import argv
 
 class MessageData:
     
@@ -35,7 +38,7 @@ class HandlerLib:
         Called once we have connected to and identified with the server.
         Mainly joins the channels that we want to join at the start.
         """
-        for chan in self.ident.joins:
+        for chan in self.bot.joins:
             self.conn.join(chan)
     
     def handle_nick_in_use(self, data):
@@ -104,6 +107,15 @@ class HandlerLib:
             handler = lambda d: True    # this is probably not the best 
         handler(data)
 
+class Identity:
+
+    def __init__(self, vals):
+        self.host = vals['host']
+        self.serv = vals['server']
+        self.ident = vals['ident']
+        self.name = vals['name']
+        self.nick = vals['nick']
+
 class Bot:
 
     valid_hooks = {
@@ -112,26 +124,22 @@ class Bot:
             # TODO: implement more
             }
     
-    def __init__(self, host=None, chan=None, nick=None):
-        self.ident = config.Identity()
-        if host:
-            self.ident.host = host
-        if chan:
-            self.ident.joins = [chan]
-        if nick:
-            self.ident.nick = nick
-            self.ident.ident = nick
-
+    def __init__(self, config):
+        self.config = config
+        self.ident = Identity(config['identity'])
+        self.joins = config['channels']['join'].split()
         self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
-
         self.conn = connect.IRCConn(self)
-        # CommandLib depreciated in favour of PluginHandler
-        # self.cmds = config.CommandLib(self)
         self.plugin_handler = PluginHandler(self, join(dirname(__file__), 'plugins'))
         self.handlers = HandlerLib(self)
         self.conn.connect()
-        self.conn.mainloop()
-    
+        try:
+            self.conn.mainloop()
+        except BaseException as e:
+            self.handle_exception(e)
+
+    def handle_exception(self, e):
+        raise e
     
     def parse(self, line):
         if not line:
@@ -164,7 +172,17 @@ class Bot:
     def reload_cmds(self):
         self.cmds = reload(config).CommandLib(self)
         
+def main(*args):
+    if not args:
+        print('You must at least specify a host server to connect to.')
+        return 1
+    host = args[0]
+    cfgdir = join(dirname(__file__), 'configs')
+    conf = get_config(cfgdir, host)
+    if conf is None:
+        print('No config file found or config file incomplete.')
+        return 1
+    Bot(conf)
 
 if __name__ == '__main__':
-    from sys import argv
-    Bot(*argv[1:])
+    main(*argv[1:])

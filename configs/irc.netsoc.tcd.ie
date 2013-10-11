@@ -1,0 +1,9 @@
+[identity]
+ident = bunbot
+host = irc.netsoc.tcd.ie
+server = cube.netsoc.tcd.ie
+name = Botty McBotson
+nick = bunbot
+
+[channels]
+join = #bunbot-test

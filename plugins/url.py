@@ -1,4 +1,5 @@
 from urllib.request import urlopen
+from urllib.parse import quote
 from urllib.error import URLError
 from html.parser import HTMLParseError
 import re
@@ -34,6 +35,7 @@ class Plugin:
         by other functions."""
         match = data.regex_match
         url, domain, ipv4, ipv6, port, filepath = match.groups()
+        url = quote(url, safe=':/%')    # To handle unicode chars in the URL
         self.url_data = {}
         self.url_data['url'] = url
         self.url_data['domain'] = domain
