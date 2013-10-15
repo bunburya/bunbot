@@ -77,18 +77,18 @@ class Plugin:
         self.url_data['filepath'] = filepath
 
     def title(self, data):
-        print('title called')
         try:
             html = self.fetch_url(self.url_data['url']).readall()
         except URLError as e:
-            raise e
             return
         try:
             soup = BeautifulSoup(html)
         except HTMLParseError:
             return
         try:
-            title = soup.find('head').find('title').text
+            title = soup.find('head').find('title').text.replace('\n', '').replace('\r', '').replace('\t', ' ')
+            print([ord(i) for i in title])
+            print(title)
         except AttributeError:
             title = None
         if title is not None:
