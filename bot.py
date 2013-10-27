@@ -23,6 +23,18 @@ class MessageData:
         self.string = None
         self.regex_match = None
 
+    def copy(self):
+        new = MessageData()
+        new.irc_cmd = self.irc_cmd
+        new.to = self.to
+        new.from_nick = self.from_nick
+        new.from_host = self.from_host
+        new.tokens = self.tokens
+        new.string = self.string
+        new.regex_match = self.regex_match
+        return new
+
+
 class HandlerLib:
     
     """This class contains functions for handling various IRC events."""
@@ -99,6 +111,9 @@ class HandlerLib:
             handler = self.handle_join
         elif cmd == 'PRIVMSG':
             data.to = data.tokens.pop(0)
+            # If message is to me, pretend "channel" is the sender
+            if data.to == self.ident.nick:
+                data.to = data.from_nick
             handler = self.handle_privmsg
         elif cmd == 'NICK':
             data.to = data.tokens.pop(0)

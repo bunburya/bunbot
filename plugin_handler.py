@@ -86,10 +86,15 @@ class PluginHandler:
             key = hook.get('key', None)   # key is sometimes optional
             self.register_hook(hook_type, name, key, func)
         print('Loaded plugin {}'.format(name))
+
+    # Methods for executing plugin functions below.
+    # NB: Any method which calls a function should send data.copy(),
+    # not data itself. This is so that plugins may alter the data given to
+    # them without affecting other plugins relying in the same data.
     
     def exec_hooks(self, hook_type, key, data):
         for hook in self.hooks.get(hook_type, {}).get(key, []):
-            hook.func(data)
+            hook.func(data.copy())
 
     def exec_cmd_if_exists(self, data):
         cmd = data.tokens.pop(0)[1:]
@@ -98,7 +103,7 @@ class PluginHandler:
     def exec_privmsg_re_if_exists(self, data):
         for re in self.hooks['privmsg_re']:
             if re.match(data.string):
-                return self.hooks['privmsg_re'][re].func(data)
+                return self.hooks['privmsg_re'][re].func(data.copy())
 
     def exec_privmsg_re_if_exists(self, data):
         for regex in self.hooks['privmsg_re']:
@@ -106,11 +111,11 @@ class PluginHandler:
             if match:
                 data.regex_match = match
                 for hook in self.hooks['privmsg_re'][regex]:
-                    hook.func(data)
+                    hook.func(data.copy())
 
     def exec_privmsg(self, data):
         for hook in self.hooks['privmsg']:
-            hook.func(data)
+            hook.func(data.copy())
 
     # Change these
     
@@ -118,4 +123,5 @@ class PluginHandler:
         pass
     
     def exec_other_join(self, data):
-        pass
+        for h in self.hooks['other_join'][None]:
+            h.func(data.copy())
