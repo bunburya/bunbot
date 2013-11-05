@@ -6,5 +6,5 @@ class Plugin:
         self.handler = handler
         self.hooks = [{'type': 'command', 'key': '!source', 'func': self.source}]
 
-    def rev(self, data):
+    def source(self, data):
         self.conn.say('https://github.com/bunburya/bunbot', data.to)
