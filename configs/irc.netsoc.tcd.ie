@@ -7,3 +7,6 @@ nick = bunbot
 
 [channels]
 join = #bunbot-test
+
+[ignores]
+* = bunburya:ALL

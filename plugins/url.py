@@ -86,9 +86,7 @@ class Plugin:
         except HTMLParseError:
             return
         try:
-            title = soup.find('head').find('title').text.replace('\n', '').replace('\r', '').replace('\t', ' ')
-            print([ord(i) for i in title])
-            print(title)
+            title = soup.find('head').find('title').text.replace('\n', '').replace('\r', '').replace('\t', ' ').strip()
         except AttributeError:
             title = None
         if title is not None:

@@ -21,6 +21,13 @@ class _Section:
     def __contains__(self, option):
         return self.parent.has_option(self.name, option)
 
+    def __iter__(self):
+        self._val_opts = iter(dict(self.parent.items(self.name)))
+        return self
+
+    def __next__(self):
+        return next(self._val_opts)
+
     def get(self, option, default=None):
         if self.parent.has_option(self.name, option):
             return self[option]

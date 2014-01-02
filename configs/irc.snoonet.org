@@ -8,3 +8,5 @@ nick = bunbot
 [channels]
 join = #europe #truerope
 
+[ignores]
+* = rAnnouncer:ALL

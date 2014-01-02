@@ -43,7 +43,6 @@ class HandlerLib:
         self.bot = bot
         self.ident = bot.ident
         self.conn = bot.conn
-        self.plugin_handler = bot.plugin_handler
     
     def handle_connect(self, data):
         """
@@ -52,7 +51,7 @@ class HandlerLib:
         """
         for chan in self.bot.joins:
             self.conn.join(chan)
-    
+
     def handle_nick_in_use(self, data):
         self.ident.nick += '_'
         self.conn.connect()
@@ -94,7 +93,7 @@ class HandlerLib:
         if data.from_nick != self.ident.nick:
             self.plugin_handler.exec_hooks('other_nick_change', '', data)
     
-    def handle(self, data):
+    def get_handler(self, data):
         """This is the function that is called externally.  It decides
         which handler should be used and calls that handler."""
         cmd = data.irc_cmd
@@ -120,7 +119,11 @@ class HandlerLib:
             handler = self.handle_nick
         else:
             handler = lambda d: True    # this is probably not the best 
-        handler(data)
+        return handler
+
+    @property
+    def plugin_handler(self):
+        return self.bot.plugin_handler
 
 class Identity:
 
@@ -143,10 +146,12 @@ class Bot:
         self.config = config
         self.ident = Identity(config['identity'])
         self.joins = config['channels']['join'].split()
+        self.ignores = {chan: config['ignores'][chan].split(':')
+                for chan in config['ignores']}
         self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
         self.conn = connect.IRCConn(self)
-        self.plugin_handler = PluginHandler(self, join(dirname(__file__), 'plugins'))
         self.handlers = HandlerLib(self)
+        self.plugin_handler = PluginHandler(self, join(dirname(__file__), 'plugins'))
         self.conn.connect()
         try:
             self.conn.mainloop()
@@ -181,7 +186,8 @@ class Bot:
                     
         data.tokens = tokens
         data.string = ' '.join(tokens)
-        self.handlers.handle(data)
+        handler = self.handlers.get_handler(data)
+        handler(data)
 
     
     def reload_cmds(self):
