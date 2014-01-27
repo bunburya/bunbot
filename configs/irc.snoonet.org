@@ -4,6 +4,7 @@ host = irc.snoonet.org
 server = cube.netsoc.tcd.ie
 name = Botty McBotson
 nick = bunbot
+pass = sn00pass
 
 [channels]
 join = #europe #truerope

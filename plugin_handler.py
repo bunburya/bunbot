@@ -29,6 +29,7 @@ class PluginHandler:
     # - Join, part, kick, ban etc hooks
 
     valid_hooks = {
+            'on_connect',
             'command',
             'privmsg_re',
             'action_re',
@@ -54,7 +55,8 @@ class PluginHandler:
     
     def load_plugins_from_dir(self, plugin_dir=None):
         plugin_dir = plugin_dir or self.plugin_dir
-        plugins = filter(lambda fname: fname.endswith('.py'), listdir(plugin_dir))
+        plugins = filter(lambda fname: fname.endswith('.py') and not fname == '__init__.py',
+                listdir(plugin_dir))
         for p in plugins:
             self.load_plugin(p.rstrip('.py'))
 
@@ -78,6 +80,7 @@ class PluginHandler:
         plugin_dir = plugin_dir or self.plugin_dir
         #module = import_module('plugins.rev')  # TODO: fix this to import in general,
                                                 # maybe have plugins package instead of plugins dir
+        fname = '.'.join((basename(plugin_dir), name))
         module = import_module('.'.join((basename(plugin_dir), name)))
         self.loaded_plugins[name] = plugin = module.Plugin(self.bot, self)
         for hook in plugin.hooks:

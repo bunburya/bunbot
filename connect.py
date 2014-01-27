@@ -1,11 +1,18 @@
 from socket import socket, AF_INET, SOCK_STREAM
 
+class MessageTooLongError(Exception):
+    """Raised when we receive a message from the IRC server that is too long."""
+    pass
+
 class IRCConn:
     
     """
     This class handles the connection with the IRC server.
     It connects and sends and receives messages.
     """
+
+    MAX_MSG_LEN = 10000     # maximum length of any message received from IRC server
+                            # (TODO: find a non-arbitrary value for this)
     
     def __init__(self, bot):
         self._bot = bot
@@ -54,7 +61,16 @@ class IRCConn:
         """
         buf = []
         while buf[-2:] != [b'\r', b'\n']:
+            # NB:  This seems to cause a memory leak in some situations,
+            # particularly where we get a ping timeout.  I'm guessing this
+            # because the IRC server keeps sending data, possibly null bytes,
+            # and so buff gets massive.  Fix this.
             buf.append(self._sock.recv(1))
+
+            if len(buf) > self.MAX_MSG_LEN:
+                print('last 10 characters:')
+                print([ord(i) for i in buf[-10:]])
+                raise MessageTooLongError
 
         try:
             line = b''.join(buf).decode()

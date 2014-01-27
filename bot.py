@@ -49,6 +49,7 @@ class HandlerLib:
         Called once we have connected to and identified with the server.
         Mainly joins the channels that we want to join at the start.
         """
+        self.plugin_handler.exec_hooks('on_connect', None, data)
         for chan in self.bot.joins:
             self.conn.join(chan)
 
@@ -65,7 +66,6 @@ class HandlerLib:
         else:
             self.plugin_handler.exec_self_join(data)
 
-    
     def handle_privmsg(self, data):
         
         self.plugin_handler.exec_privmsg_re_if_exists(data)
@@ -92,6 +92,9 @@ class HandlerLib:
     def handle_nick(self, data):
         if data.from_nick != self.ident.nick:
             self.plugin_handler.exec_hooks('other_nick_change', '', data)
+
+    def handle_errors(self, data):
+        print('ERROR:', data.string)
     
     def get_handler(self, data):
         """This is the function that is called externally.  It decides

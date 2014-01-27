@@ -82,6 +82,8 @@ class Plugin:
         user_quotes = quotes.get(uname)
         if user_quotes and (quote in user_quotes):
             user_quotes.remove(quote)
+            if not user_quotes:
+                user_quotes.pop(uname)
             self._save_quotes(quotes)
             self.conn.say('Quote removed.', data.to)
         else:
