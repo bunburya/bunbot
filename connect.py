@@ -1,7 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 
 class ConnectionClosed(Exception):
-    """Raised when we receive an empty string from the IRC serber, indicating
+    """Raised when we receive an empty string from the IRC server, indicating
     that the connection with the server has been closed.
     """
     pass
@@ -66,7 +66,7 @@ class IRCConn:
             c = self._sock.recv(1)
             if not c:
                 raise ConnectionClosed
-            buf.append(self._sock.recv(1))
+            buf.append(c)
 
         try:
             line = b''.join(buf).decode()
