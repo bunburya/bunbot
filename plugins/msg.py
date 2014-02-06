@@ -68,13 +68,13 @@ class Plugin:
 
     def check_for_msgs(self, data):
         msgs = self._load_msgs()
-        if data.from_nick in msgs:
+        if data.from_nick.lower() in msgs:
             self.conn.say('You have messages. Type "!msg" to view them.',
                     data.from_nick)
 
     def view_msgs(self, data):
         msgs = self._load_msgs()
-        user_msgs = msgs.pop(data.from_nick, None)
+        user_msgs = msgs.pop(data.from_nick.lower(), None)
         if user_msgs is None:
             self.conn.say('No messages.', data.from_nick)
         else:
@@ -85,7 +85,7 @@ class Plugin:
 
     def send_msg(self, data):
         _from = data.from_nick
-        to = data.tokens[0]
+        to = data.tokens[0].lower()
         msg = ' '.join(data.tokens[1:])
         time = asctime()
         msgs = self._load_msgs()
