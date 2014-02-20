@@ -2,6 +2,7 @@ from urllib.request import urlopen, Request, build_opener, HTTPRedirectHandler
 from urllib.parse import quote
 from urllib.error import URLError
 from html.parser import HTMLParseError
+from http.client import HTTPException
 import re
 
 from bs4 import BeautifulSoup
@@ -79,7 +80,8 @@ class Plugin:
     def title(self, data):
         try:
             html = self.fetch_url(self.url_data['url']).readall()
-        except URLError as e:
+        except (URLError, HTTPException) as e:
+            print('Error encountered in fetching URL: {}'.format(type(e)))
             return
         try:
             soup = BeautifulSoup(html)
