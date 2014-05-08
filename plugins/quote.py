@@ -18,7 +18,8 @@ class Plugin:
         self.hooks = [
                 {'type': 'command', 'key': '!add_quote', 'func': self.add_quote},
                 {'type': 'command', 'key': '!quote', 'func': self.get_quote},
-                {'type': 'command', 'key': '!del_quote', 'func': self.del_quote}
+                {'type': 'command', 'key': '!del_quote', 'func': self.del_quote},
+                {'type': 'command', 'key': '!nuke_quotes', 'func': self.nuke_quotes}
                 ]
 
     def _load_quotes(self):
@@ -83,11 +84,22 @@ class Plugin:
         if user_quotes and (quote in user_quotes):
             user_quotes.remove(quote)
             if not user_quotes:
-                user_quotes.pop(uname)
+                quotes.pop(uname)
             self._save_quotes(quotes)
             self.conn.say('Quote removed.', data.to)
         else:
             self.conn.say('{}: No such quote.'.format(data.from_nick), data.to)
+
+    def nuke_quotes(self, data):
+        uname = data.tokens[0]
+        quotes = self._load_quotes()
+        if uname in quotes:
+            quotes.pop(uname)
+            self._save_quotes(quotes)
+            self.conn.say('All quotes from {} removed.'.format(uname), data.to)
+        else:
+            self.conn.say('No quotes from {}.'.format(uname), data.to)
+
 
     def _get_uname(self, tokens):
         tokens = tokens[:]

@@ -37,6 +37,7 @@ class PluginHandler:
             'action',
             'other_join',
             'self_join',
+            'other_part',
             'part',
             'nick',
             'ping'

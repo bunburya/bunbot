@@ -93,6 +93,13 @@ class HandlerLib:
         if data.from_nick != self.ident.nick:
             self.plugin_handler.exec_hooks('other_nick_change', '', data)
 
+    def handle_part(self, data):
+        if data.from_nick != self.ident.nick:
+            self.plugin_handler.exec_hooks('other_part', None, data)
+
+    def handle_quit(self, data):
+        self.handle_part(data)  # for now
+
     def handle_errors(self, data):
         print('ERROR:', data.string)
     
@@ -120,6 +127,11 @@ class HandlerLib:
         elif cmd == 'NICK':
             data.to = data.tokens.pop(0)
             handler = self.handle_nick
+        elif cmd == 'QUIT':
+            handler = self.handle_quit
+        elif cmd == 'PART':
+            data.to = data.tokens.pop(0)
+            handler = self.handle_part
         else:
             handler = lambda d: True    # this is probably not the best 
         return handler
