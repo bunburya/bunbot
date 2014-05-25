@@ -19,7 +19,8 @@ class Plugin:
                 {'type': 'command', 'key': '!add_quote', 'func': self.add_quote},
                 {'type': 'command', 'key': '!quote', 'func': self.get_quote},
                 {'type': 'command', 'key': '!del_quote', 'func': self.del_quote},
-                {'type': 'command', 'key': '!nuke_quotes', 'func': self.nuke_quotes}
+                {'type': 'command', 'key': '!nuke_quotes', 'func': self.nuke_quotes},
+                {'type': 'command', 'key': '!list_quotes', 'func': self.list_quotes}
                 ]
 
     def _load_quotes(self):
@@ -148,3 +149,18 @@ class Plugin:
         else:
             self.conn.say('{}: No quotes{}. Add some!'.format(data.from_nick,
                 ' from {}'.format(uname) if uname else ''), data.to)
+
+    def list_quotes(self, data):
+        
+        quotes = self._load_quotes()
+        if not data.tokens:
+            self.conn.say('I have quotes for the following users:', data.from_nick)
+            for uname in quotes:
+                self.conn.say('    {}'.format(uname), data.from_nick)
+            self.conn.say('To see all quotes for a user, type "!list_quotes <username>"',
+                        data.from_nick)
+        else:
+            uquotes = quotes[data.tokens[0].strip()]
+            for q in uquotes:
+                self.conn.say(q, data.from_nick)
+            
