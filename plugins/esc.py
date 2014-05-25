@@ -31,7 +31,7 @@ class Plugin:
 
     def esc(self, data):
         if data.tokens:
-            country = data.tokens[0].strip().lower()
+            country = ' '.join(data.tokens).strip().lower()
         else:
             country = None
 
