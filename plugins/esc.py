@@ -16,8 +16,7 @@ class Plugin:
         self.name = basename(__file__).rstrip('.py')
         self.data = self.load_data()
         self.hooks = [
-                {'type': 'command', 'key': '!esc', 'func': self.esc},
-                {'type': 'action', 'func': self.action_test}
+                {'type': 'command', 'key': '!esc', 'func': self.esc}
                 ]
 
     def load_data(self):

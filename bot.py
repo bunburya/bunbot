@@ -221,8 +221,6 @@ class Bot:
             if data.tokens is None:
                 data.tokens = tokens
         data.string = ' '.join(data.tokens)
-        print(data.tokens)
-        print(data.trailing)
         handler = self.handlers.get_handler(data)
         handler(data)
 
