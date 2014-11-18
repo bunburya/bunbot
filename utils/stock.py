@@ -14,31 +14,45 @@ INDEX = {'NASDAQ': '^IXIC', 'S&P': '^GSPC'}
 def main(*symbols):
     print(get_quote(*symbols))
         
+def Plugin:
 
-def get_csv(*symbols):
-    """Query the website and fetch the CSV containing the data."""
-    symbols = [INDEX.get(s.upper(), s) for s in symbols]
-    query = (('s', '+'.join(symbols)), ('f', ''.join(FORMAT)))
-    args = urlencode(query)
-    csv = urlopen(BASE_URL+args)
-    csv = csv.readlines()
-    return [line.decode().strip('\r\n') for line in csv]
+    def __init__(self, bot, handler):
+        self.bot = bot
+        self.conn = bot.conn
+        self.handler = handler
+        self.hooks = [
+                {'type': 'command', 'key': '!stock', 'func': self.stock}
+                ]
 
-def parse_csv(csv):
-    """Parse the CSV to extract the relevant data, and return it
-    in an appropriate format."""
-    data = []
-    for line in csv:
-        sym, price, change = [w.strip('"') for w in line.split(',')]
-        change = change.split(' ')[-1]
-        data.append([sym, price, change])
-    return data
+    def stock(self, data):
+        sym = data.tokens.pop(0)
+        s, p, c = self.get_quote(sym)[0]
+        self.conn.say('{}: {} ({})'.format(s, p, c), data.to)
 
-def get_quote(*symbols):
-    csv = get_csv(*symbols)
-    data = parse_csv(csv)
-    return data
-            
+    def get_csv(self, *symbols):
+        """Query the website and fetch the CSV containing the data."""
+        symbols = [INDEX.get(s.upper(), s) for s in symbols]
+        query = (('s', '+'.join(symbols)), ('f', ''.join(FORMAT)))
+        args = urlencode(query)
+        csv = urlopen(BASE_URL+args)
+        csv = csv.readlines()
+        return [line.decode().strip('\r\n') for line in csv]
+
+    def parse_csv(self, csv):
+        """Parse the CSV to extract the relevant data, and return it
+        in an appropriate format."""
+            data = []
+            for line in csv:
+                sym, price, change = [w.strip('"') for w in line.split(',')]
+                change = change.split(' ')[-1]
+                data.append([sym, price, change])
+            return data
+
+    def get_quote(self, *symbols):
+        csv = self.get_csv(*symbols)
+        data = self.parse_csv(csv)
+        return data
+
 
 if __name__ == '__main__':
     main(*argv[1:])

@@ -22,6 +22,10 @@ class MessageData:
         self.tokens = None
         self.string = None
         self.regex_match = None
+        self.is_ctcp = None
+        self.ctcp_cmd = None
+        self.trailing = None    # this is a tokenised version of the last token
+                                # (eg, the message part of a PRIVMSG) 
 
     def copy(self):
         new = MessageData()
@@ -32,6 +36,9 @@ class MessageData:
         new.tokens = self.tokens
         new.string = self.string
         new.regex_match = self.regex_match
+        new.is_ctcp = self.is_ctcp
+        new.ctcp_cmd = self.ctcp_cmd
+        new.trailing = self.trailing
         return new
 
 
@@ -68,26 +75,12 @@ class HandlerLib:
 
     def handle_privmsg(self, data):
         
+        # At this stage we should have one token, which is the message;
+        # now break this out so that each token is a word
         self.plugin_handler.exec_privmsg_re_if_exists(data)
         self.plugin_handler.exec_privmsg(data)
-        # Always call exec_cmd_if_exists last, as it alters
-        # data.tokens
         self.plugin_handler.exec_cmd_if_exists(data)
         
-        # This has to be changed
-        """ Old code
-        if is_to_me and (cmd in self.cmds.addr_funcs):
-            self.cmds.addr_funcs[cmd](args, data)
-        elif cmd in self.cmds.unaddr_funcs:
-            self.cmds.unaddr_funcs[cmd](args, data)
-        else:
-            for func in self.cmds.all_privmsg_funcs:
-                func(tokens, data)
-            for pattern in self.cmds.regex_funcs:
-                groups = findall(pattern, ' '.join(tokens))
-                if groups:
-                    self.cmds.regex_funcs[pattern](groups)
-        """
         
     def handle_nick(self, data):
         if data.from_nick != self.ident.nick:
@@ -102,6 +95,11 @@ class HandlerLib:
 
     def handle_errors(self, data):
         print('ERROR:', data.string)
+
+    def handle_ctcp(self, data):
+        print('ctcp detected')
+        if data.ctcp_cmd == 'ACTION':
+            print('action detected')
     
     def get_handler(self, data):
         """This is the function that is called externally.  It decides
@@ -123,7 +121,14 @@ class HandlerLib:
             # If message is to me, pretend "channel" is the sender
             if data.to == self.ident.nick:
                 data.to = data.from_nick
-            handler = self.handle_privmsg
+            if data.tokens[0].startswith('\x01') and data.tokens[-1].endswith('\x01'):
+                # CTCP command
+                data.is_ctcp = True
+                data.ctcp_cmd = data.tokens.pop(0).lstrip('\x01')
+                handler = self.handle_ctcp
+            else:
+                data.is_ctcp = False
+                handler = self.handle_privmsg
         elif cmd == 'NICK':
             data.to = data.tokens.pop(0)
             handler = self.handle_nick
@@ -161,8 +166,7 @@ class Bot:
         self.config = config
         self.ident = Identity(config['identity'])
         self.joins = config['channels']['join'].split()
-        self.ignores = {chan: config['ignores'][chan].split(':')
-                for chan in config['ignores']}
+        self.ignores = set(config['misc']['ignore'].split())
         self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
         self.conn = connect.IRCConn(self)
         self.handlers = HandlerLib(self)
@@ -183,24 +187,43 @@ class Bot:
         line = line.strip('\r\n')
         tokens = line.split()
         if tokens[0].startswith(':'):
+            # Prefix, ie host from which message originated.
+
             # Not sure if this if-else is necessary, as possibly lines
             # always start with ":"
             prefix = tokens.pop(0)[1:].strip(':')
         else:
             prefix = ''
         
+        # IRC command, eg "NOTICE", "PRIVMSG" etc
         cmd = tokens.pop(0)
 
-        # Maybe best to create MessageData here??
         data = MessageData()
         data.irc_cmd = cmd
         try:
             data.from_nick, data.from_host = prefix.split('!')
         except ValueError:
             pass
+
+        if data.from_nick in self.ignores:
+            print('ignoring {}'.format(data.from_nick))
+            return
                     
-        data.tokens = tokens
-        data.string = ' '.join(tokens)
+        for i, t in enumerate(tokens):
+            if t.startswith(':'):
+                # Last token is everything after :
+                # data.trailing is last token, split by space
+
+                # data.trailing has the semicolon removed but
+                # last token in data.tokens does not
+                data.trailing = [tokens[i][1:]] + tokens[i+1:]
+                data.tokens = tokens[:i] + [' '.join(tokens[i:])]
+                break
+            if data.tokens is None:
+                data.tokens = tokens
+        data.string = ' '.join(data.tokens)
+        print(data.tokens)
+        print(data.trailing)
         handler = self.handlers.get_handler(data)
         handler(data)
 

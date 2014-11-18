@@ -30,8 +30,8 @@ class Plugin:
         return data
 
     def esc(self, data):
-        if data.tokens:
-            country = ' '.join(data.tokens).strip().lower()
+        if data.trailing:
+            country = ' '.join(data.trailing).strip().lower()
         else:
             country = None
 

@@ -59,7 +59,7 @@ class Plugin:
         return quotes_file
 
     def add_quote(self, data):
-        uname, quote = self._get_uname(data.tokens)
+        uname, quote = self._get_uname(data.trailing)
         if not (uname and quote):
             self.conn.say('{}: Quotes must be of form "<username> quote"'
                     ' or "(username) quote".'.format(
@@ -79,7 +79,7 @@ class Plugin:
             self.conn.say('Quote added.', data.to)
 
     def del_quote(self, data):
-        uname, quote = self._get_uname(data.tokens)
+        uname, quote = self._get_uname(data.trailing)
         quotes = self._load_quotes()
         user_quotes = quotes.get(uname)
         if user_quotes and (quote in user_quotes):
@@ -92,7 +92,7 @@ class Plugin:
             self.conn.say('{}: No such quote.'.format(data.from_nick), data.to)
 
     def nuke_quotes(self, data):
-        uname = data.tokens[0]
+        uname = data.trailing[0]
         quotes = self._load_quotes()
         if uname in quotes:
             quotes.pop(uname)
@@ -120,8 +120,8 @@ class Plugin:
         return uname, ' '.join(tokens).strip()
 
     def get_quote(self, data):
-        if data.tokens:
-            uname = data.tokens[0].strip()
+        if data.trailing:
+            uname = data.trailing[0].strip()
         else:
             uname = None
 
@@ -153,14 +153,18 @@ class Plugin:
     def list_quotes(self, data):
         
         quotes = self._load_quotes()
-        if not data.tokens:
+        if not data.trailing:
             self.conn.say('I have quotes for the following users:', data.from_nick)
             for uname in quotes:
                 self.conn.say('    {}'.format(uname), data.from_nick)
             self.conn.say('To see all quotes for a user, type "!list_quotes <username>"',
                         data.from_nick)
         else:
-            uquotes = quotes[data.tokens[0].strip()]
-            for q in uquotes:
-                self.conn.say(q, data.from_nick)
+            uname = data.trailing[0].strip()
+            uquotes = quotes.get(uname)
+            if uquotes:
+                for q in uquotes:
+                    self.conn.say('<{}> {}'.format(uname, q), data.from_nick)
+            else:
+                self.conn.say('No quotes for {}. Add some!'.format(uname), data.from_nick)
             

@@ -61,7 +61,7 @@ class Plugin:
         return msg_file
 
     def msg(self, data):
-        if not data.tokens:
+        if not data.trailing:
             self.view_msgs(data)
         else:
             self.send_msg(data)
@@ -100,8 +100,8 @@ class Plugin:
 
     def send_msg(self, data):
         _from = data.from_nick
-        to = data.tokens[0].lower()
-        text = ' '.join(data.tokens[1:])
+        to = data.trailing[0].lower()
+        text = ' '.join(data.trailing[1:])
         time = asctime()
         msgs = self._load_msgs()
         msg = {

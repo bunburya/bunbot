@@ -40,7 +40,8 @@ class PluginHandler:
             'other_part',
             'part',
             'nick',
-            'ping'
+            'ping',
+            'other_action'
             }
 
     def __init__(self, bot, plugin_dir):
@@ -62,7 +63,6 @@ class PluginHandler:
             self.load_plugin(p.rstrip('.py'))
 
     def register_hook(self, hook_type, plugin, key, func):
-        # TODO: Replace dicts with Hook class.
         # Hooks should contain name of parent plugin, so we can have multiple
         # hooks per key and still be able to remove them properly.
         hook = Hook(hook_type, key, func, plugin)
@@ -101,7 +101,7 @@ class PluginHandler:
             hook.func(data.copy())
 
     def exec_cmd_if_exists(self, data):
-        cmd = data.tokens.pop(0)[1:]
+        cmd = data.trailing.pop(0)
         self.exec_hooks('command', cmd, data)
     
     def exec_privmsg_re_if_exists(self, data):
