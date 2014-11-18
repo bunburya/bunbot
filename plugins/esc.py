@@ -17,6 +17,7 @@ class Plugin:
         self.data = self.load_data()
         self.hooks = [
                 {'type': 'command', 'key': '!esc', 'func': self.esc},
+                {'type': 'action', 'func': self.action_test}
                 ]
 
     def load_data(self):
@@ -56,3 +57,4 @@ class Plugin:
         c, a, s, v = d
         self.conn.say('{} are in this year\'s Eurovision final with "{}" by {} ({}).'.format(c, s, a, v),
                 data.to)
+

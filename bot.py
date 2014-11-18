@@ -97,9 +97,8 @@ class HandlerLib:
         print('ERROR:', data.string)
 
     def handle_ctcp(self, data):
-        print('ctcp detected')
         if data.ctcp_cmd == 'ACTION':
-            print('action detected')
+            self.plugin_handler.exec_hooks('action', None, data)
     
     def get_handler(self, data):
         """This is the function that is called externally.  It decides
@@ -121,10 +120,10 @@ class HandlerLib:
             # If message is to me, pretend "channel" is the sender
             if data.to == self.ident.nick:
                 data.to = data.from_nick
-            if data.tokens[0].startswith('\x01') and data.tokens[-1].endswith('\x01'):
+            if data.trailing[0].startswith('\x01') and data.trailing[-1].endswith('\x01'):
                 # CTCP command
                 data.is_ctcp = True
-                data.ctcp_cmd = data.tokens.pop(0).lstrip('\x01')
+                data.ctcp_cmd = data.trailing.pop(0).lstrip('\x01')
                 handler = self.handle_ctcp
             else:
                 data.is_ctcp = False

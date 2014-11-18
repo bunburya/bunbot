@@ -41,7 +41,7 @@ class PluginHandler:
             'part',
             'nick',
             'ping',
-            'other_action'
+            'action'
             }
 
     def __init__(self, bot, plugin_dir):
