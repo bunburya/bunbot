@@ -118,8 +118,9 @@ class PluginHandler:
                     hook.func(data.copy())
 
     def exec_privmsg(self, data):
-        for hook in self.hooks['privmsg']:
-            hook.func(data.copy())
+        #for hook in self.hooks['privmsg']:
+        #    hook.func(data.copy())
+        self.exec_hooks('privmsg', None, data)
 
     # Change these
     

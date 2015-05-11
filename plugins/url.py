@@ -1,6 +1,6 @@
 from urllib.request import urlopen, Request, build_opener, HTTPRedirectHandler
 from urllib.parse import quote
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 from html.parser import HTMLParseError
 from http.client import HTTPException
 import re
@@ -80,7 +80,7 @@ class Plugin:
     def title(self, data):
         try:
             html = self.fetch_url(self.url_data['url']).readall()
-        except (URLError, HTTPException) as e:
+        except (URLError, HTTPException, HTTPError) as e:
             print('Error encountered in fetching URL: {}'.format(type(e)))
             return
         try:

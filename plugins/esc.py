@@ -9,19 +9,27 @@ if version_info.minor < 3:
 
 class Plugin:
 
+    HELPSTR = 'Syntax is \'!esc [year] [country]\'.'
+
     def __init__(self, bot, handler):
         self.bot = bot
         self.conn = bot.conn
         self.handler = handler
         self.name = basename(__file__).rstrip('.py')
-        self.data = self.load_data()
+        self.load_country_codes()
         self.hooks = [
                 {'type': 'command', 'key': '!esc', 'func': self.esc}
                 ]
 
-    def load_data(self):
+    def load_country_codes(self):
+        codes_file = join(self.handler.plugin_dir, 'data',
+                self.bot.ident.host, self.name, 'country_iso_codes.json')
+        with open(codes_file) as f:
+            self.country_codes = load(f)
+
+    def load_data(self, year):
         data_file = join(self.handler.plugin_dir, 'data',
-                self.bot.ident.host, self.name, 'esc.csv')
+                self.bot.ident.host, self.name, 'esc_{}.csv'.format(year))
         data = {}
         with open(data_file) as f:
             for line in f:
@@ -30,30 +38,49 @@ class Plugin:
         return data
 
     def esc(self, data):
-        if data.trailing:
-            country = ' '.join(data.trailing).strip().lower()
-        else:
+
+        if not data.trailing:
+            year = '2015'
             country = None
+        else:
+            tokens = data.trailing
+            if tokens[0].isdigit() and len(tokens[0]) == 4:
+                year = tokens.pop(0)
+            else:
+                year = '2015'
+
+            country = ' '.join(tokens)
+            country = self.country_codes.get(country.upper(), country)
+
 
         if not country:
-            self.conn.say('Watch the Eurovision final at '
-                    'http://www.eurovision.tv/page/webtv?program=102853',
-                    data.to)
+            if year == '2015':
+                self.conn.say('This year\'s Eurovision Song Contest is on 22 May. '
+                              'You can watch it at http://www.eurovision.tv/page/webtv?program=132913.',
+                        data.to)
+                self.conn.say('Type \'!esc [country name]\' to see that country\'s entry.', data.to)
+            else:
+                self.conn.say(self.HELPSTR, data.to)
             return
 
-        if country == 'ireland':
-            self.conn.say('Ireland has won the Eurovision Song Contest more times '
-                    'than any other country! http://en.wikipedia.org/wiki/'
-                    'List_of_Eurovision_Song_Contest_winners', data.to)
+        try:
+            songs_data = self.load_data(year)
+        except FileNotFoundError:
+            self.conn.say('Sorry, no data found for that year.', data.to)
             return
 
-        d = self.data.get(country, None)
+        d = songs_data.get(country.lower(), None)
         if not d:
-            self.conn.say('No song found for {}.  Either they didn\'t get through '
-                    'to the final, or you can\'t spell!'.format(country), data.to)
+            self.conn.say('No song found for {}.  Either I don\'t have an entry for that country and year, '
+                    'or the spelling is incorrect.'.format(country), data.to)
             return
 
         c, a, s, v = d
-        self.conn.say('{} are in this year\'s Eurovision final with "{}" by {} ({}).'.format(c, s, a, v),
+        
+        if year == '2015':
+            self.conn.say('{} are in this year\'s Eurovision with "{}" by {} ({}).'.format(c, s, a, v),
+                data.to)
+        else:
+            self.conn.say('{} were in the finals of the {} Eurovision with "{}" by {} ({}).'.format(c, year, s, a, v),
                 data.to)
 
