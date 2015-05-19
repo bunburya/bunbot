@@ -55,7 +55,7 @@ class Plugin:
 
         if not country:
             if year == '2015':
-                self.conn.say('This year\'s Eurovision Song Contest is on 22 May. '
+                self.conn.say('This year\'s Eurovision Song Contest is on 23 May. '
                               'You can watch it at http://www.eurovision.tv/page/webtv?program=132913.',
                         data.to)
                 self.conn.say('Type \'!esc [country name]\' to see that country\'s entry.', data.to)
