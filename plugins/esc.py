@@ -77,7 +77,7 @@ class Plugin:
 
         c, a, s, v = d
         
-        if year == '2015':
+        if year == '2016':
             self.conn.say('{} are in this year\'s Eurovision with "{}" by {} ({}).'.format(c, s, a, v),
                 data.to)
         else:
