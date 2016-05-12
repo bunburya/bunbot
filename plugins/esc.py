@@ -40,23 +40,23 @@ class Plugin:
     def esc(self, data):
 
         if not data.trailing:
-            year = '2015'
+            year = '2016'
             country = None
         else:
             tokens = data.trailing
             if tokens[0].isdigit() and len(tokens[0]) == 4:
                 year = tokens.pop(0)
             else:
-                year = '2015'
+                year = '2016'
 
             country = ' '.join(tokens)
             country = self.country_codes.get(country.upper(), country)
 
 
         if not country:
-            if year == '2015':
-                self.conn.say('This year\'s Eurovision Song Contest is on 23 May. '
-                              'You can watch it at http://www.eurovision.tv/page/webtv?program=132913.',
+            if year == '2016':
+                self.conn.say('This year\'s Eurovision Song Contest is on 14 May. '
+                              'You can watch it at http://www.eurovision.tv/page/webtv?program=213583.',
                         data.to)
                 self.conn.say('Type \'!esc [country name]\' to see that country\'s entry.', data.to)
             else:
