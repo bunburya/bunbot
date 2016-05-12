@@ -47,6 +47,16 @@ class Plugin:
         r'(?::(\d+))?' # optional port
         r'([/+]\S+)?)', re.IGNORECASE)
 
+    ignore_title = {
+        "reddit.com",
+        "redd.it",
+        "youtube.com",
+        "youtu.be",
+        "twitter.com",
+        "amazon.com",
+        "soundcloud.com"
+    }
+
     def __init__(self, bot, handler):
         self.bot = bot
         self.conn = bot.conn
@@ -78,6 +88,14 @@ class Plugin:
         self.url_data['filepath'] = filepath
 
     def title(self, data):
+        url = self.url_data['url']
+        if url.endswith('.mp4') or url.endswith('.webm'):
+            # The html parser chokes on some video files, so this is a
+            # (rather inadequate) way of addressing the issue.
+            return
+        for domain in self.ignore_title:
+            if self.url_data['domain'].endswith(domain):
+                return
         try:
             html = self.fetch_url(self.url_data['url']).readall()
         except (URLError, HTTPException, HTTPError) as e:
@@ -86,6 +104,7 @@ class Plugin:
         try:
             soup = BeautifulSoup(html)
         except HTMLParseError:
+            print('Error parsing HTML.')
             return
         try:
             title = soup.find('head').find('title').text.replace('\n', '').replace('\r', '').replace('\t', ' ').strip()
