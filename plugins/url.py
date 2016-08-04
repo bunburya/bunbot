@@ -54,7 +54,8 @@ class Plugin:
         "youtu.be",
         "twitter.com",
         "amazon.com",
-        "soundcloud.com"
+        "soundcloud.com",
+        "spotify.com"
     }
 
     def __init__(self, bot, handler):
@@ -63,8 +64,9 @@ class Plugin:
         self.handler = handler
         self.ignore_titles = set() # TODO: save to/read from file
         self.hooks = [
-                {'type': 'privmsg_re', 'key': self.url_regex, 'func': self.parse_url},
-                {'type': 'privmsg_re', 'key': self.url_regex, 'func': self.title}
+                {'type': 'privmsg_re', 'key': self.url_regex, 'func': self.parse_url}
+                # ceding this job to gonzobot (TODO: find a way to blacklist it instead)
+                #{'type': 'privmsg_re', 'key': self.url_regex, 'func': self.title}
                 ]
 
     def fetch_url(self, url):

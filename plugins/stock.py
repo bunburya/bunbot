@@ -22,6 +22,9 @@ class Plugin:
                 ]
 
     def stock(self, data):
+        if not data.trailing:
+            self.conn.say('Syntax is !stock <ticker>', data.to)
+            return
         sym = data.trailing.pop(0)
         try:
             s, p, c = self.get_quote(sym)[0]

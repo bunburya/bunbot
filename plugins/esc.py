@@ -9,7 +9,7 @@ if version_info.minor < 3:
 
 class Plugin:
 
-    HELPSTR = 'Syntax is \'!esc [year] [country]\'.'
+    HELPSTR = 'Syntax is \'!esc [year] [country]\' or \'!esc vote [country]\' to vote.'
 
     def __init__(self, bot, handler):
         self.bot = bot
@@ -20,6 +20,53 @@ class Plugin:
         self.hooks = [
                 {'type': 'command', 'key': '!esc', 'func': self.esc}
                 ]
+
+    def vote(self, data, country=None):
+        if not country:
+            country = None
+        vote_file = join(self.handler.plugin_dir, 'data',
+                self.bot.ident.host, self.name, 'votes.json')
+        songs_data = self.load_data('2016')
+        countries = [i.lower() for i in songs_data.keys()]
+        print(countries)
+        try:
+            with open(vote_file, 'r') as f:
+                user_votes, country_votes = load(f)
+        except FileNotFoundError:
+            user_votes = {}
+            country_votes = {c.lower(): [c, 0] for c in songs_data.keys()}
+            print(country_votes)
+        if country is not None:
+            country = self.country_codes.get(country.upper(), country)
+            if country.lower() not in countries:
+                self.conn.say('{} are not in the ESC final.'.format(country), data.to)
+                return
+            else:
+                prev_vote = user_votes.get(data.from_host, None)
+                if prev_vote is not None and prev_vote.upper() == country.upper():
+                    self.conn.say('{}, you already voted for that country.'.format(data.from_nick), data.to)
+                    return
+                user_votes[data.from_host] = country
+                country_votes[country.lower()][1] += 1
+                if prev_vote is not None:
+                    country_votes[prev_vote.lower()][1] -= 1
+                self.conn.say('{} voted for {} to win (this overrules any previous vote).'.format(data.from_nick, country), data.to)
+                with open(vote_file, 'w') as f:
+                    dump([user_votes, country_votes], f)
+        else:
+            rank = list(country_votes.keys())
+            rank.sort(key=lambda k:country_votes[k][1], reverse=True)
+            print(rank)
+            top_3 = rank[:3]
+            responses = []
+            for k in top_3:
+                name = country_votes[k][0]
+                votes = country_votes[k][1]
+                responses.append('{} ({} votes)'.format(name, votes))
+            self.conn.say('Top 3 countries: {}'.format(', '.join(responses)), data.to)
+
+
+
 
     def load_country_codes(self):
         codes_file = join(self.handler.plugin_dir, 'data',
@@ -44,6 +91,10 @@ class Plugin:
             country = None
         else:
             tokens = data.trailing
+            if tokens[0].lower() == 'vote':
+                tokens.pop(0)
+                self.vote(data, ' '.join(tokens))
+                return
             if tokens[0].isdigit() and len(tokens[0]) == 4:
                 year = tokens.pop(0)
             else:
@@ -58,8 +109,6 @@ class Plugin:
                 self.conn.say('This year\'s Eurovision Song Contest is on 14 May. '
                               'You can watch it at http://www.eurovision.tv/page/webtv?program=213583.',
                         data.to)
-                self.conn.say('Type \'!esc [country name]\' to see that country\'s entry.', data.to)
-            else:
                 self.conn.say(self.HELPSTR, data.to)
             return
 
