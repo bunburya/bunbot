@@ -237,7 +237,7 @@ class Bot:
     
     def join(self, chan):
         self.conn.join(chan)
-        self.histories[chan] = History(self, self.history_limit, chan)
+        #self.histories[chan] = History(self, self.history_limit, chan)
 
     
     def reload_cmds(self):

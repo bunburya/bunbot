@@ -60,7 +60,7 @@ class PluginHandler:
         plugins = filter(lambda fname: fname.endswith('.py') and not fname == '__init__.py',
                 listdir(plugin_dir))
         for p in plugins:
-            self.load_plugin(p.rstrip('.py'))
+            self.load_plugin(p[:-3]) # stripping .py
 
     def register_hook(self, hook_type, plugin, key, func):
         # Hooks should contain name of parent plugin, so we can have multiple

@@ -3,17 +3,19 @@
 from sys import argv
 from urllib.request import urlopen
 from urllib.parse import urlencode
-from urllib.error import URLError
+from urllib.error import HTTPError
 from json import loads
 
 import re
 
+class CurrencyError(Exception): pass
 
 class Plugin:
     
     BASE_URL = 'http://api.fixer.io/'
     PAIR_PATTERN = re.compile(r'\A[a-zA-Z]{3}/[a-zA-Z]{3}\Z')
     SINGLE_PATTERN = re.compile(r'\A[a-zA-Z]{3}\Z')
+    DATE_PATTERN = re.compile(r'\A\d{4}-\d{2}-\d{2}\Z')
     DEFAULT_BASE = 'EUR'
 
     def __init__(self, bot, handler):
@@ -38,28 +40,44 @@ class Plugin:
         return symbols
 
     def get_data(self, url, base, comp):
+        bad_cur = []
+        if self.symbols:
+            for s in (base, comp):
+                if s not in self.symbols:
+                    bad_cur.append(s)
+        if bad_cur:
+            raise CurrencyError(*bad_cur)
         request = {'base': base, 'symbols': comp}
-        get = urlencode(request).encode('utf-8')
-        try:
-            response = urlopen(url, post).read().decode('utf-8')
-        except HTTPError:
-            self.conn.say('Error communicating with currency API.', data.to)
-            return None
+        get = urlencode(request)
+        response = urlopen(url + '?' +  get).read().decode('utf-8')
         data = loads(response)
+        rate = data['rates'].get(comp)
+        if rate is None:
+            # this is somewhat redundant given the check at the start of
+            # the function but is helpful in case self.symbols is inaccurate
+            # for whatever reason.
+            raise CurrencyError(comp)
         return {
-            'rate': data['rates'][comp],
-            'date': data['date'],
-            'base': data['base']
+                'rate': data['rates'][comp],
+                'comp': comp,
+                'date': data['date'],
+                'base': data['base']
         }
+
     
     def convert(self, data):
-        if 1 > len(data.trailing) > 2:
+        print(data.trailing)
+        if not (1 <= len(data.trailing) <= 2):
+            print('invalid number of arguments')
             self.syntax_help(data.to)
             return
         cur = data.trailing[0]
         
         if len(data.trailing) > 1:
             date = data.trailing[1]
+            if not re.match(self.DATE_PATTERN, date):
+                self.conn.say('Date syntax is YYYY-MM-DD.', data.to)
+                return
         else:
             date = 'latest'
         url = self.BASE_URL + date 
@@ -71,9 +89,17 @@ class Plugin:
         else:
             self.syntax_help(data.to)
             return
-        data = self.get_data(url, base, comp)
-        if data is not None:
-            self.conn.say('{base}/{comp} = {rate} on {date}.'.format(data),
+
+        try:
+            cur_data = self.get_data(url, base, comp)
+        except CurrencyError as e:
+            self.conn.say('Bad currency code: {}'.format(', '.join(e.args)), data.to)
+            return
+        except HTTPError:
+            self.conn.say('Error communicating with currency API.', data.to)
+            return
+        else:
+            self.conn.say('{base}/{comp} = {rate} on {date}.'.format(**cur_data),
                 data.to)
             
     def syntax_help(self, recip):
