@@ -82,7 +82,7 @@ class PluginHandler:
         #module = import_module('plugins.rev')  # TODO: fix this to import in general,
                                                 # maybe have plugins package instead of plugins dir
         fname = '.'.join((basename(plugin_dir), name))
-        module = import_module('.'.join((basename(plugin_dir), name)))
+        module = import_module(fname)
         self.loaded_plugins[name] = plugin = module.Plugin(self.bot, self)
         for hook in plugin.hooks:
             hook_type = hook['type']

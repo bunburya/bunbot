@@ -41,7 +41,18 @@ class MessageData:
         new.trailing = self.trailing
         return new
 
+class History:
+    
+    def __init__(self, bot, limit=200):
+        self.bot = bot
+        self.limit = limit
+        self.data = deque(maxlen=limit)
 
+    def add_message(self, msg):
+        self.deque.append(msg.copy())
+    
+    
+    
 class HandlerLib:
     
     """This class contains functions for handling various IRC events."""
@@ -58,7 +69,7 @@ class HandlerLib:
         """
         self.plugin_handler.exec_hooks('on_connect', None, data)
         for chan in self.bot.joins:
-            self.conn.join(chan)
+            self.bot.join(chan)
 
     def handle_nick_in_use(self, data):
         self.ident.nick += '_'
@@ -223,6 +234,10 @@ class Bot:
         data.string = ' '.join(data.tokens)
         handler = self.handlers.get_handler(data)
         handler(data)
+    
+    def join(self, chan):
+        self.conn.join(chan)
+        self.histories[chan] = History(self, self.history_limit, chan)
 
     
     def reload_cmds(self):
