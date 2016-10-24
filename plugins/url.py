@@ -1,7 +1,10 @@
 from urllib.request import urlopen, Request, build_opener, HTTPRedirectHandler
 from urllib.parse import quote
 from urllib.error import URLError, HTTPError
-from html.parser import HTMLParseError
+try:
+    from html.parser import HTMLParseError
+except ImportError:
+    class HTMLParseError(BaseException): pass
 from http.client import HTTPException
 import re
 

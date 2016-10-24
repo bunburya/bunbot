@@ -5,7 +5,7 @@ from importlib import import_module
 from collections import OrderedDict
 import re
 
-class PluginLoaderException: pass
+class PluginLoaderException(BaseException): pass
 
 class Hook:
 

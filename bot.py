@@ -43,14 +43,21 @@ class MessageData:
 
 class History:
     
-    def __init__(self, bot, limit=200):
+    def __init__(self, bot, chan, limit=200):
         self.bot = bot
+        self.chan = chan
         self.limit = limit
         self.data = deque(maxlen=limit)
 
     def add_message(self, msg):
-        self.deque.append(msg.copy())
+        self.data.append(msg.copy())
     
+    def __iter__(self):
+        self._iter = reversed(self.data)
+        return self
+    
+    def __next__(self):
+        return next(self._iter)
     
     
 class HandlerLib:
@@ -180,6 +187,7 @@ class Bot:
         self.hooks = {hook_type: OrderedDict() for hook_type in self.valid_hooks}
         self.conn = connect.IRCConn(self)
         self.handlers = HandlerLib(self)
+        self.histories = {}
         self.plugin_handler = PluginHandler(self, join(dirname(__file__), 'plugins'))
         self.conn.connect()
         try:
@@ -237,7 +245,7 @@ class Bot:
     
     def join(self, chan):
         self.conn.join(chan)
-        #self.histories[chan] = History(self, self.history_limit, chan)
+        self.histories[chan] = History(self, chan, self.history_limit)
 
     
     def reload_cmds(self):
