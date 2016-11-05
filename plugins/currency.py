@@ -71,7 +71,7 @@ class Plugin:
             print('invalid number of arguments')
             self.syntax_help(data.to)
             return
-        cur = data.trailing[0]
+        cur = data.trailing[0].upper()
         
         if len(data.trailing) > 1:
             date = data.trailing[1]

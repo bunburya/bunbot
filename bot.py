@@ -2,9 +2,10 @@
 
 from imp import reload
 from re import findall
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from os.path import dirname, join
 from logging import getLogger, FileHandler, Formatter
+from copy import deepcopy
 
 import connect
 from config import get_config
@@ -18,7 +19,6 @@ class MessageData:
         self.to = None
         self.from_nick = None
         self.from_host = None
-        #self.channel = None    # replaced by self.to
         self.tokens = None
         self.string = None
         self.regex_match = None
@@ -29,16 +29,16 @@ class MessageData:
 
     def copy(self):
         new = MessageData()
-        new.irc_cmd = self.irc_cmd
-        new.to = self.to
-        new.from_nick = self.from_nick
-        new.from_host = self.from_host
-        new.tokens = self.tokens
-        new.string = self.string
-        new.regex_match = self.regex_match
-        new.is_ctcp = self.is_ctcp
-        new.ctcp_cmd = self.ctcp_cmd
-        new.trailing = self.trailing
+        new.irc_cmd = deepcopy(self.irc_cmd)
+        new.to = deepcopy(self.to)
+        new.from_nick = deepcopy(self.from_nick)
+        new.from_host = deepcopy(self.from_host)
+        new.tokens = deepcopy(self.tokens)
+        new.string = deepcopy(self.string)
+        new.regex_match = self.regex_match #Can't deepcopy match object
+        new.is_ctcp = deepcopy(self.is_ctcp)
+        new.ctcp_cmd = deepcopy(self.ctcp_cmd)
+        new.trailing = deepcopy(self.trailing)
         return new
 
 class History:
@@ -51,6 +51,7 @@ class History:
 
     def add_message(self, msg):
         self.data.append(msg.copy())
+        print('added: {}'.format(msg.copy().trailing))
     
     def __iter__(self):
         self._iter = reversed(self.data)
@@ -93,12 +94,16 @@ class HandlerLib:
 
     def handle_privmsg(self, data):
         
+        # Add message to History.
+        # This should be done before data is modified
+        # (TODO: Is data modified by the below code? should it be?)
+        self.bot.histories[data.to].add_message(data)
+
         # At this stage we should have one token, which is the message;
         # now break this out so that each token is a word
         self.plugin_handler.exec_privmsg_re_if_exists(data)
         self.plugin_handler.exec_privmsg(data)
         self.plugin_handler.exec_cmd_if_exists(data)
-        
         
     def handle_nick(self, data):
         if data.from_nick != self.ident.nick:
@@ -178,7 +183,9 @@ class Bot:
             'privmsg_re'
             # TODO: implement more
             }
-    
+   
+    history_limit = 200
+
     def __init__(self, config):
         self.config = config
         self.ident = Identity(config['identity'])
@@ -235,6 +242,7 @@ class Bot:
                 # data.trailing has the semicolon removed but
                 # last token in data.tokens does not
                 data.trailing = [tokens[i][1:]] + tokens[i+1:]
+                print(data.trailing)
                 data.tokens = tokens[:i] + [' '.join(tokens[i:])]
                 break
             if data.tokens is None:
