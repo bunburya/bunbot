@@ -78,7 +78,7 @@ class PluginHandler:
             self.hooks_by_plugin[hook_type][plugin] = [key]
 
     def load_plugin(self, name, plugin_dir=None):
-        if name in self.bot.config['misc']['blacklist']:
+        if name in self.bot.config['misc'].get('blacklist', set()):
             print('Ignoring module {}'.format(name))
             return
         plugin_dir = plugin_dir or self.plugin_dir

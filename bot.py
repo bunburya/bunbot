@@ -97,7 +97,12 @@ class HandlerLib:
         # Add message to History.
         # This should be done before data is modified
         # (TODO: Is data modified by the below code? should it be?)
-        self.bot.histories[data.to].add_message(data)
+        if data.to in self.bot.histories:
+            h = self.bot.histories[data.to]
+        else:
+            h = History(self.bot, data.to)
+            self.bot.histories[data.to] = h
+        h.add_message(data)
 
         # At this stage we should have one token, which is the message;
         # now break this out so that each token is a word

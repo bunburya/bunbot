@@ -72,20 +72,20 @@ class Plugin:
                 return
 
             try:
-                d[uname].append(quote)
+                d[uname.lower()].append(quote)
             except KeyError:
-                d[uname] = [quote]
+                d[uname.lower()] = [quote]
             self._save_quotes(d)
             self.conn.say('Quote added.', data.to)
 
     def del_quote(self, data):
         uname, quote = self._get_uname(data.trailing)
         quotes = self._load_quotes()
-        user_quotes = quotes.get(uname)
+        user_quotes = quotes.get(uname.lower())
         if user_quotes and (quote in user_quotes):
             user_quotes.remove(quote)
             if not user_quotes:
-                quotes.pop(uname)
+                quotes.pop(uname.lower())
             self._save_quotes(quotes)
             self.conn.say('Quote removed.', data.to)
         else:
@@ -95,7 +95,7 @@ class Plugin:
         uname = data.trailing[0]
         quotes = self._load_quotes()
         if uname in quotes:
-            quotes.pop(uname)
+            quotes.pop(uname.lower())
             self._save_quotes(quotes)
             self.conn.say('All quotes from {} removed.'.format(uname), data.to)
         else:
@@ -137,7 +137,7 @@ class Plugin:
         
         if not uname:
             uname = choice(list(quotes.keys()))
-        user_quotes = quotes.get(uname)
+        user_quotes = quotes.get(uname.lower())
 
         if user_quotes:
             quote = choice(user_quotes)

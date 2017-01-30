@@ -3,6 +3,7 @@
 
 from urllib.request import urlopen
 import xml.etree.ElementTree as ET
+import datetime
 
 from unidecode import unidecode
 
@@ -26,7 +27,7 @@ class MEP:
         self.country = xml.find('country').text
         self.euro_group = xml.find('politicalGroup').text
         self.mep_id = xml.find('id').text
-        self.country_group = xml.find('nationalPoliticalGroup').text
+        self.national_group = xml.find('nationalPoliticalGroup').text
         
         self.euro_group_abbr = self.EURO_GROUPS.get(self.euro_group)
         self.full_name_ascii = unidecode(self.full_name)
@@ -56,22 +57,24 @@ class Plugin:
         self.bot = bot
         self.conn = bot.conn
         self.handler = handler
-        self.name = basename(__file__).rstrip('.py')
         self.mep_data, self.xml_date = self.get_mep_data(from_web=True)
         self.hooks = [
             {'type': 'command', 'key': '!mep', 'func': self.mep}
         ]
     
     def mep(self, data):
-        mep_name = ' '.join(data.trailing)
-        results = self.mep_data.search_meps_by_name(mep_name)
+        mep_name = ' '.join(data.trailing).strip()
+        if not mep_name:
+            self.conn.say('Syntax is "!mep <MEP name>".', data.to)
+            return
+        results = self.mep_data.search_mep_by_name(mep_name)
         if not results:
             response = 'Sorry, no MEP found for {}.'.format(mep_name)
         elif len(results) == 1:
             mep = results[0]
-            response = ('{}, MEP for {}.  Euro group: {}.'
+            response = ('{}, MEP for {}. Euro group: {}. '
                         'National group: {}.'.format(mep.full_name,
-                        mep.country, mep.euro_group, mep.national_group))
+                        mep.country, mep.euro_group_abbr, mep.national_group))
         elif len(results) == 2:
             response = 'Did you mean {} or {}?'.format(
                 results[0].full_name, results[1].full_name)
@@ -82,6 +85,8 @@ class Plugin:
         
     
     def get_mep_data(self, from_web=None):
+        """Returns MEPList, either constructed from raw data fetched from web
+        or pre-existing MEPList (if less than a day old)."""
         if from_web is None:
             from_web = not (datetime.date.today() == self.xml_date)
         if from_web:
@@ -94,9 +99,10 @@ class Plugin:
             
     
     def get_meps_from_web(self):
+        """Returns raw XML data fetched from web."""
         data = urlopen(self.XML_URL)
         tree = ET.parse(data)
         root = tree.getroot()
-        return MEPList(root)
+        return root
     
-+
+
