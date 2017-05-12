@@ -22,11 +22,13 @@ class Plugin:
                 ]
 
     def vote(self, data, country=None):
+        if country.lower() == 'netherlands':
+            country = 'the netherlands'
         if not country:
             country = None
         vote_file = join(self.handler.plugin_dir, 'data',
                 self.bot.ident.host, self.name, 'votes.json')
-        songs_data = self.load_data('2016')
+        songs_data = self.load_data('2017')
         countries = [i.lower() for i in songs_data.keys()]
         print(countries)
         try:
@@ -65,9 +67,6 @@ class Plugin:
                 responses.append('{} ({} votes)'.format(name, votes))
             self.conn.say('Top 3 countries: {}'.format(', '.join(responses)), data.to)
 
-
-
-
     def load_country_codes(self):
         codes_file = join(self.handler.plugin_dir, 'data',
                 self.bot.ident.host, self.name, 'country_iso_codes.json')
@@ -87,7 +86,7 @@ class Plugin:
     def esc(self, data):
 
         if not data.trailing:
-            year = '2016'
+            year = '2017'
             country = None
         else:
             tokens = data.trailing
@@ -98,16 +97,18 @@ class Plugin:
             if tokens[0].isdigit() and len(tokens[0]) == 4:
                 year = tokens.pop(0)
             else:
-                year = '2016'
+                year = '2017'
 
             country = ' '.join(tokens)
             country = self.country_codes.get(country.upper(), country)
-
+            
+            if country.lower() == 'netherlands':
+                country = 'the netherlands'
 
         if not country:
-            if year == '2016':
-                self.conn.say('This year\'s Eurovision Song Contest is on 14 May. '
-                              'You can watch it at http://www.eurovision.tv/page/webtv?program=213583.',
+            if year == '2017':
+                self.conn.say('This year\'s Eurovision Song Contest is on 13 May. '
+                        'You can watch it at https://www.youtube.com/watch?v=ehH0_UXtQlY.',
                         data.to)
                 self.conn.say(self.HELPSTR, data.to)
             return
@@ -126,7 +127,7 @@ class Plugin:
 
         c, a, s, v = d
         
-        if year == '2016':
+        if year == '2017':
             self.conn.say('{} are in this year\'s Eurovision with "{}" by {} ({}).'.format(c, s, a, v),
                 data.to)
         else:
