@@ -1,5 +1,5 @@
 from os import listdir
-from os.path import dirname, basename
+from os.path import dirname, basename, expanduser
 from sys import path
 from importlib import import_module
 from collections import OrderedDict
@@ -93,6 +93,10 @@ class PluginHandler:
             key = hook.get('key', None)   # key is sometimes optional
             self.register_hook(hook_type, name, key, func)
         print('Loaded plugin {}'.format(name))
+
+    @property
+    def plugin_data_dir(self):
+        return expanduser('~/.config/bunbot')
 
     # Methods for executing plugin functions below.
     # NB: Any method which calls a function should send data.copy(),

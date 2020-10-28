@@ -80,6 +80,9 @@ class Plugin:
 
     def del_quote(self, data):
         uname, quote = self._get_uname(data.trailing)
+        if not uname:
+            self.conn.say('{}: Syntax is "!del_quote <username> quote"'.format(data.from_nick), data.to)
+            return
         quotes = self._load_quotes()
         user_quotes = quotes.get(uname.lower())
         if user_quotes and (quote in user_quotes):
